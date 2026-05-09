@@ -1,5 +1,8 @@
 streamlit
+streamlit-authenticator
 pandas
 plotly
 google-cloud-firestore
 google-auth
+Pillow
+bcrypt
