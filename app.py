@@ -44,33 +44,27 @@ except Exception as e:
 # LOGIN SYSTEM
 # =========================================
 
-names = ["Mohamed", "Ahmed"]
-
-usernames = ["mohamed", "ahmed"]
-
-passwords = ["123456", "abcdef"]
-
-hashed_passwords = stauth.Hasher.hash_passwords(passwords)
+credentials = {
+    "usernames": {
+        "mohamed": {
+            "name": "Mohamed",
+            "password": "$2b$12$LQv3c1yqBW5l4Y6x2L1M8e8jM2lM9vJk7hM5sFQ9x9Q4mV8L2zY5K"
+        },
+        "ahmed": {
+            "name": "Ahmed",
+            "password": "$2b$12$Y26vQ9u5rV0M1K7oS8w2L.uM8gA3pK6xQ5dW2mL8hN9sF7aP1dJ2C"
+        }
+    }
+}
 
 authenticator = stauth.Authenticate(
-    {
-        "usernames": {
-            usernames[i]: {
-                "name": names[i],
-                "password": hashed_passwords[i]
-            }
-            for i in range(len(usernames))
-        }
-    },
-    "vpcsolar",
+    credentials,
+    "vpcsolar_cookie",
     "abcdef",
-    cookie_expiry_days=30
+    30
 )
 
-name, authentication_status, username = authenticator.login(
-    "Login",
-    "main"
-)
+name, authentication_status, username = authenticator.login()
 
 # =========================================
 # LOGIN CHECK
