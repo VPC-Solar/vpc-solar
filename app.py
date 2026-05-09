@@ -1,120 +1,116 @@
 import streamlit as st
 
+# إعدادات واجهة التطبيق
 st.set_page_config(
-    page_title="VPC Solar",
+    page_title="VPC Solar - شمس أكتوبر",
     page_icon="☀️",
     layout="wide"
 )
 
-# ===== SIDEBAR =====
+# تخصيص التصميم (CSS) لجعل الخطوط أوضح
+st.markdown("""
+    <style>
+    .main { text-align: right; direction: rtl; }
+    div[data-testid="stMetricValue"] { font-size: 25px; }
+    </style>
+    """, unsafe_allow_html=True)
 
+# ===== SIDEBAR (القائمة الجانبية) =====
 with st.sidebar:
+    # إضافة اللوجو في القائمة الجانبية
+    st.image("logo.png", width=150) # تأكد من تسمية ملف الصورة logo.png في GitHub
     st.title("☀️ VPC Solar")
-
+    st.write("نظام شمس أكتوبر المتكامل")
+    
     page = st.radio(
-        "Navigation",
-        [
-            "Home",
-            "Solar Calculator",
-            "Installation Companies",
-            "Monitoring Plans",
-            "Contact"
-        ]
+        "انتقل إلى:",
+        ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة", "تواصل معنا"]
     )
 
-# ===== HOME =====
+# ===== الرئيسية (Home) =====
+if page == "الرئيسية":
+    st.title("☀️ VPC Solar - شمس أكتوبر")
+    st.subheader("حلول الطاقة الشمسية الذكية لمستقبل أفضل")
+    st.markdown("---")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("### 🏠 الأنظمة السكنية")
+        st.write("توفير حتى 100% من فاتورة الكهرباء المنزلية.")
+        if st.button("استكشف الأنظمة السكنية"):
+            st.info("سيتم إضافة التفاصيل قريباً")
+            
+    with col2:
+        st.markdown("### 🚜 الأنظمة الزراعية")
+        st.write("حلول ري متكاملة تعمل بالطاقة الشمسية.")
+        if st.button("استكشف الأنظمة الزراعية"):
+            st.info("سيتم إضافة التفاصيل قريباً")
 
-if page == "Home":
+# ===== حاسبة الطاقة الشمسية (Solar Calculator) =====
+elif page == "حاسبة الطاقة الشمسية":
+    st.title("⚡ حاسبة الطاقة الشمسية الدقيقة")
+    
+    with st.expander("📝 أدخل بيانات أحمالك هنا", expanded=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            power = st.number_input("إجمالي قدرة الأجهزة (وات/Watt)", min_value=10, value=1000)
+            hours = st.number_input("ساعات التشغيل المطلوبة يومياً", min_value=1, value=6)
+        with col2:
+            voltage = st.selectbox("جهد النظام (Volt)", [12, 24, 48])
+            safety = 1.25 # عامل أمان لضمان كفاءة الإنفيرتر
 
-    st.title("☀️ VPC Solar")
-    st.subheader("Smart Solar Solutions")
+    # الحسابات الهندسية
+    daily_energy = power * hours
+    inverter_size = power * safety
+    panel_count = round(daily_energy / (400 * 5)) # بافتراض لوح 400 وات و5 ساعات شمس
+    battery_capacity = round((daily_energy * 1) / (voltage * 0.8)) # يوم احتياط وتفريغ 80%
 
     st.markdown("---")
+    st.subheader("📊 المواصفات الفنية المطلوبة:")
+    
+    res1, res2, res3 = st.columns(3)
+    res1.metric("قدرة الإنفيرتر", f"{int(inverter_size)} W")
+    res2.metric("عدد الألواح (400W)", f"{panel_count} ألواح")
+    res3.metric("سعة البطاريات", f"{battery_capacity} Ah")
+    
+    st.success(f"إجمالي استهلاكك اليومي: {daily_energy} وات/ساعة")
 
+# ===== شركات التركيب (Companies) =====
+elif page == "شركات التركيب":
+    st.title("🏢 شركات التركيب المعتمدة")
+    st.write("قائمة بأفضل الشركات في منطقتك")
+    
+    companies = [
+        {"الاسم": "شمس أكتوبر للمقاولات", "التقييم": "⭐ 4.9", "الموقع": "6 أكتوبر"},
+        {"الاسم": "إيجيبت سولار", "التقييم": "⭐ 4.7", "الموقع": "القاهرة"},
+        {"الاسم": "النيل للطاقة", "التقييم": "⭐ 4.8", "الموقع": "الجيزة"}
+    ]
+    
+    for comp in companies:
+        with st.container():
+            st.markdown(f"**{comp['الاسم']}** | {comp['التقييم']} | {comp['الموقع']}")
+            st.divider()
+
+# ===== خطط المتابعة (Monitoring) =====
+elif page == "خطط المتابعة":
+    st.title("📡 أنظمة المتابعة والتحكم")
     col1, col2 = st.columns(2)
-
     with col1:
-        st.markdown("## 🏠 Residential Systems")
-        st.button("Open Residential")
-
+        st.subheader("الخطة الأساسية")
+        st.write("- مراقبة الإنتاج لحظياً\n- تنبيهات الأعطال")
     with col2:
-        st.markdown("## 🚜 Agricultural Systems")
-        st.button("Open Agricultural")
+        st.subheader("الخطة المتقدمة")
+        st.write("- تقارير شهرية مفصلة\n- دعم فني 24/7\n- زيارات صيانة دورية")
 
-# ===== SOLAR CALCULATOR =====
-
-elif page == "Solar Calculator":
-
-    st.title("⚡ Solar Calculator")
-
-    power = st.number_input(
-        "Device Power (W)",
-        min_value=0,
-        value=100
-    )
-
-    hours = st.number_input(
-        "Usage Hours Per Day",
-        min_value=0,
-        value=5
-    )
-
-    energy = power * hours
-
-    st.success(f"Daily Consumption = {energy} Wh")
-
-    panels = energy / 500
-
-    st.info(f"Estimated Solar Panels Needed: {round(panels,1)}")
-
-# ===== COMPANIES =====
-
-elif page == "Installation Companies":
-
-    st.title("🏢 Installation Companies")
-
-    st.markdown("### Featured Companies")
-
-    st.card = """
-    شركة تركيب طاقة شمسية
-    ⭐ 4.8
-    القاهرة
-    """
-
-    st.write(st.card)
-
-# ===== MONITORING =====
-
-elif page == "Monitoring Plans":
-
-    st.title("📡 Monitoring Plans")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("Basic")
-        st.write("Monthly monitoring")
-        st.write("Fault alerts")
-
-    with col2:
-        st.subheader("Premium")
-        st.write("Maintenance visits")
-        st.write("24/7 support")
-
-# ===== CONTACT =====
-
-elif page == "Contact":
-
-    st.title("📞 Contact Us")
-
-    name = st.text_input("Your Name")
-
-    message = st.text_area("Message")
-
-    if st.button("Send"):
-        st.success("Message Sent Successfully")
+# ===== تواصل معنا (Contact) =====
+elif page == "تواصل معنا":
+    st.title("📞 تواصل مع فريق VPC Solar")
+    name = st.text_input("الاسم بالكامل")
+    email = st.text_input("البريد الإلكتروني")
+    msg = st.text_area("رسالتك")
+    if st.button("إرسال"):
+        st.success("تم استلام رسالتك، وسنتواصل معك قريباً.")
 
 # ===== FOOTER =====
-
 st.markdown("---")
-st.caption("VPC Solar © 2026")
+st.caption("VPC Solar © 2026 | مشروع تخرج طاقة متجددة")
