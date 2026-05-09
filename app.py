@@ -18,7 +18,7 @@ st.markdown("""
 # ===== SIDEBAR (القائمة الجانبية) =====
 with st.sidebar:
     # إضافة اللوجو في القائمة الجانبية
-   # st.image("logo.png", width=150) # تأكد من تسمية ملف الصورة logo.png في GitHub
+    st.image("logo.png", width=150) # تأكد من تسمية ملف الصورة logo.png في GitHub
     st.title("☀️ VPC Solar")
     st.write("نظام الطاقة الشمسية المتكامل")
     
