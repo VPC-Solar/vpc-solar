@@ -2,7 +2,7 @@ import streamlit as st
 
 # إعدادات واجهة التطبيق
 st.set_page_config(
-    page_title="VPC Solar - شمس أكتوبر",
+    page_title="VPC Solar",
     page_icon="☀️",
     layout="wide"
 )
@@ -20,7 +20,7 @@ with st.sidebar:
     # إضافة اللوجو في القائمة الجانبية
     st.image("logo.png", width=150) # تأكد من تسمية ملف الصورة logo.png في GitHub
     st.title("☀️ VPC Solar")
-    st.write("نظام شمس أكتوبر المتكامل")
+    st.write("نظام الطاقة الشمسية المتكامل")
     
     page = st.radio(
         "انتقل إلى:",
@@ -29,7 +29,7 @@ with st.sidebar:
 
 # ===== الرئيسية (Home) =====
 if page == "الرئيسية":
-    st.title("☀️ VPC Solar - شمس أكتوبر")
+    st.title("☀️ VPC Solar")
     st.subheader("حلول الطاقة الشمسية الذكية لمستقبل أفضل")
     st.markdown("---")
     
@@ -113,4 +113,4 @@ elif page == "تواصل معنا":
 
 # ===== FOOTER =====
 st.markdown("---")
-st.caption("VPC Solar © 2026 | مشروع تخرج طاقة متجددة")
+st.caption("VPC Solar © 2026")
