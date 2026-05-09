@@ -4,31 +4,36 @@ from google.oauth2 import service_account
 from google.cloud import firestore
 
 # 1. إعداد الاتصال بـ Firebase (Firestore) من الـ Secrets
+# الكود ده بيقرأ مفتاح التشغيل السري اللي حطيناه في إعدادات Streamlit Secrets
 try:
-    key_dict = json.loads(st.secrets["textkey"])
-    creds = service_account.Credentials.from_service_account_info(key_dict)
-    db = firestore.Client(credentials=creds, project="vpc-solar-db")
+    if "textkey" in st.secrets:
+        key_dict = json.loads(st.secrets["textkey"])
+        creds = service_account.Credentials.from_service_account_info(key_dict)
+        db = firestore.Client(credentials=creds, project="vpc-solar-db")
+    else:
+        st.error("خطأ: مفتاح 'textkey' غير موجود في Streamlit Secrets.")
 except Exception as e:
-    st.error("خطأ في الاتصال بقاعدة البيانات. تأكد من إعداد Secrets بشكل صحيح.")
+    st.error(f"خطأ في الاتصال بقاعدة البيانات: {e}")
 
-# إعدادات واجهة التطبيق
+# 2. إعدادات واجهة التطبيق
 st.set_page_config(
     page_title="VPC Solar",
     page_icon="☀️",
     layout="wide"
 )
 
-# تخصيص التصميم (CSS)
+# تخصيص التصميم (CSS) لجعل الواجهة متوافقة مع اللغة العربية (RTL)
 st.markdown("""
     <style>
     .main { text-align: right; direction: rtl; }
     div[data-testid="stMetricValue"] { font-size: 25px; }
+    section[data-testid="stSidebar"] { direction: rtl; }
     </style>
     """, unsafe_allow_html=True)
 
 # ===== SIDEBAR (القائمة الجانبية) =====
 with st.sidebar:
-    # محاولة عرض اللوجو لو موجود، لو مش موجود ميعملش Error
+    # محاولة عرض اللوجو لو موجود في المستودع
     import os
     if os.path.exists("logo.png"):
         st.image("logo.png", width=150)
@@ -41,7 +46,7 @@ with st.sidebar:
         ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة", "تواصل معنا"]
     )
 
-# ===== الرئيسية (Home) =====
+# ===== صفحة الرئيسية (Home) =====
 if page == "الرئيسية":
     st.title("☀️ VPC Solar")
     st.subheader("حلول الطاقة الشمسية الذكية لمستقبل أفضل")
@@ -60,7 +65,7 @@ if page == "الرئيسية":
         if st.button("استكشف الأنظمة الزراعية"):
             st.info("سيتم إضافة التفاصيل قريباً")
 
-# ===== حاسبة الطاقة الشمسية =====
+# ===== صفحة حاسبة الطاقة الشمسية (Solar Calculator) =====
 elif page == "حاسبة الطاقة الشمسية":
     st.title("⚡ حاسبة الطاقة الشمسية الدقيقة")
     
@@ -71,12 +76,13 @@ elif page == "حاسبة الطاقة الشمسية":
             hours = st.number_input("ساعات التشغيل المطلوبة يومياً", min_value=1, value=6)
         with col2:
             voltage = st.selectbox("جهد النظام (Volt)", [12, 24, 48])
-            safety = 1.25
+            safety = 1.25 # عامل أمان لضمان كفاءة الإنفيرتر
 
+    # الحسابات الهندسية الأساسية
     daily_energy = power * hours
     inverter_size = power * safety
-    panel_count = round(daily_energy / (400 * 5))
-    battery_capacity = round((daily_energy * 1) / (voltage * 0.8))
+    panel_count = round(daily_energy / (400 * 5)) # بافتراض لوح 400 وات و5 ساعات شمس
+    battery_capacity = round((daily_energy * 1) / (voltage * 0.8)) # يوم احتياط وتفريغ 80%
 
     st.markdown("---")
     st.subheader("📊 المواصفات الفنية المطلوبة:")
@@ -86,59 +92,39 @@ elif page == "حاسبة الطاقة الشمسية":
     res2.metric("عدد الألواح (400W)", f"{panel_count} ألواح")
     res3.metric("سعة البطاريات", f"{battery_capacity} Ah")
     
-    if st.button("حفظ الحسابات في حسابي"):
+    st.success(f"إجمالي استهلاكك اليومي: {daily_energy} وات/ساعة")
+
+    # زر لحفظ الحسابات في Firebase
+    if st.button("حفظ هذه الحسابات"):
         try:
-            doc_ref = db.collection("calculations").document()
-            doc_ref.set({
-                "power": power,
+            db.collection("solar_calculations").add({
+                "power_w": power,
                 "hours": hours,
-                "daily_energy": daily_energy,
-                "inverter_size": inverter_size,
+                "daily_energy_wh": daily_energy,
+                "inverter_w": inverter_size,
                 "timestamp": firestore.SERVER_TIMESTAMP
             })
-            st.success("تم حفظ الحسابات بنجاح!")
+            st.success("تم حفظ البيانات في قاعدة البيانات بنجاح!")
         except Exception as e:
-            st.error(f"فشل الحفظ: {e}")
+            st.error(f"فشل في حفظ البيانات: {e}")
 
-# ===== تواصل معنا (Contact) - الجزء الأهم للربط =====
-elif page == "تواصل معنا":
-    st.title("📞 تواصل مع فريق VPC Solar")
-    with st.form("contact_form"):
-        name = st.text_input("الاسم بالكامل")
-        email = st.text_input("البريد الإلكتروني")
-        msg = st.text_area("رسالتك")
-        submit_button = st.form_submit_button("إرسال")
-
-        if submit_button:
-            if name and email and msg:
-                try:
-                    # إرسال البيانات لـ Firebase
-                    doc_ref = db.collection("messages").document()
-                    doc_ref.set({
-                        "name": name,
-                        "email": email,
-                        "message": msg,
-                        "timestamp": firestore.SERVER_TIMESTAMP
-                    })
-                    st.success(f"شكراً يا {name}، تم استلام رسالتك وحفظها بنجاح!")
-                except Exception as e:
-                    st.error(f"حدث خطأ أثناء الإرسال: {e}")
-            else:
-                st.warning("من فضلك أكمل جميع الحقول.")
-
-# باقي الصفحات (شركات التركيب، خطط المتابعة) تظل كما هي...
+# ===== صفحة شركات التركيب =====
 elif page == "شركات التركيب":
     st.title("🏢 شركات التركيب المعتمدة")
     st.write("قائمة بأفضل الشركات في منطقتك")
+    
     companies = [
         {"الاسم": "شمس أكتوبر للمقاولات", "التقييم": "⭐ 4.9", "الموقع": "6 أكتوبر"},
         {"الاسم": "إيجيبت سولار", "التقييم": "⭐ 4.7", "الموقع": "القاهرة"},
         {"الاسم": "النيل للطاقة", "التقييم": "⭐ 4.8", "الموقع": "الجيزة"}
     ]
+    
     for comp in companies:
-        st.markdown(f"**{comp['الاسم']}** | {comp['التقييم']} | {comp['الموقع']}")
-        st.divider()
+        with st.container():
+            st.markdown(f"**{comp['الاسم']}** | {comp['التقييم']} | {comp['الموقع']}")
+            st.divider()
 
+# ===== صفحة خطط المتابعة =====
 elif page == "خطط المتابعة":
     st.title("📡 أنظمة المتابعة والتحكم")
     col1, col2 = st.columns(2)
@@ -149,6 +135,32 @@ elif page == "خطط المتابعة":
         st.subheader("الخطة المتقدمة")
         st.write("- تقارير شهرية مفصلة\n- دعم فني 24/7\n- زيارات صيانة دورية")
 
+# ===== صفحة تواصل معنا (Contact Us) - الربط الفعلي =====
+elif page == "تواصل معنا":
+    st.title("📞 تواصل مع فريق VPC Solar")
+    
+    with st.form("contact_form"):
+        name = st.text_input("الاسم بالكامل")
+        email = st.text_input("البريد الإلكتروني")
+        msg = st.text_area("رسالتك")
+        submit_button = st.form_submit_button("إرسال")
+
+        if submit_button:
+            if name and email and msg:
+                try:
+                    # إرسال البيانات لمجموعة (messages) في Firestore
+                    db.collection("messages").add({
+                        "name": name,
+                        "email": email,
+                        "message": msg,
+                        "timestamp": firestore.SERVER_TIMESTAMP
+                    })
+                    st.success(f"شكراً يا {name}، تم إرسال رسالتك بنجاح وسنتواصل معك قريباً.")
+                except Exception as e:
+                    st.error(f"حدث خطأ أثناء الإرسال: {e}")
+            else:
+                st.warning("برجاء ملء جميع الحقول المطلوبة.")
+
 # ===== FOOTER =====
 st.markdown("---")
-st.caption("VPC Solar © 2026")
+st.caption("VPC Solar © 2026 | تطوير م/ أبو سعد")
