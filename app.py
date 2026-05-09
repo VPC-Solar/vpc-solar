@@ -15,7 +15,6 @@ st.set_page_config(page_title="VPC Solar Pro", page_icon="☀️", layout="wide"
 if 'lang' not in st.session_state:
     st.session_state.lang = 'ar'
 
-# قاموس الترجمة الموحد
 texts = {
     'ar': {
         'title': "☀️ VPC Solar Pro",
@@ -56,9 +55,8 @@ except Exception as e:
     st.error(f"Firestore Error: {e}")
 
 # =========================================
-# 3. نظام تسجيل الدخول (Login)
+# 3. نظام تسجيل الدخول (التعديل الجذري هنا)
 # =========================================
-# الباسورد لـ mohamed هو: 123456
 credentials = {
     "usernames": {
         "mohamed": {
@@ -75,16 +73,21 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=30
 )
 
-# حل مشكلة ValueError بتحديد الـ location بشكل صريح
-name, authentication_status, username = authenticator.login(location="main")
+# في الإصدار الجديد، الدالة لا تعيد 3 قيم مباشرة، نكتفي باستدعائها
+authenticator.login(location="main")
 
-if authentication_status == False:
+# نتحقق من حالة الدخول من خلال session_state
+if st.session_state["authentication_status"] == False:
     st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
-elif authentication_status == None:
+elif st.session_state["authentication_status"] == None:
     st.warning("برجاء تسجيل الدخول للمتابعة")
-elif authentication_status:
+elif st.session_state["authentication_status"]:
 
-    # --- SIDEBAR (القائمة الجانبية) ---
+    # استخراج البيانات من session_state
+    name = st.session_state["name"]
+    username = st.session_state["username"]
+
+    # --- SIDEBAR ---
     with st.sidebar:
         try:
             st.image("logo.png", width=150)
@@ -93,75 +96,57 @@ elif authentication_status:
         
         st.write(f"👤 {L['welcome']} {name}")
         
-        # زر تبديل اللغة
         if st.button(L['lang_btn']):
             st.session_state.lang = 'en' if st.session_state.lang == 'ar' else 'ar'
             st.rerun()
             
-        page = st.radio("القائمة / Menu", [L['calc'], L['comp'], L['orders'], L['contact']])
+        page = st.radio("Menu", [L['calc'], L['comp'], L['orders'], L['contact']])
         authenticator.logout(L['logout'], "sidebar")
 
-    # --- الصفحة الرئيسية: حاسبة الطاقة ---
+    # --- صفحات التطبيق ---
     if page == L['calc']:
         st.title(L['calc'])
-        st.markdown("---")
         col1, col2 = st.columns(2)
         with col1:
-            power = st.number_input("إجمالي الأحمال (وات)", min_value=10, value=1000)
-            hours = st.number_input("ساعات التشغيل", min_value=1, value=5)
+            power = st.number_input("وات", min_value=10, value=1000)
+            hours = st.number_input("ساعات", min_value=1, value=5)
         with col2:
-            voltage = st.selectbox("جهد النظام", [12, 24, 48])
+            voltage = st.selectbox("الجهد", [12, 24, 48])
             
         daily_energy = power * hours
-        st.subheader("📊 النتائج")
-        st.metric(label="الاستهلاك اليومي", value=f"{daily_energy} Wh")
+        st.metric(label="الاستهلاك", value=f"{daily_energy} Wh")
         
         if st.button(L['save']):
-            try:
-                db.collection("solar_calculations").add({
-                    "user": username,
-                    "power_w": power,
-                    "daily_energy": daily_energy,
-                    "timestamp": firestore.SERVER_TIMESTAMP
-                })
-                st.success(L['success'])
-            except Exception as e:
-                st.error(f"Error saving: {e}")
+            db.collection("solar_calculations").add({
+                "user": username,
+                "power_w": power,
+                "daily_energy": daily_energy,
+                "timestamp": firestore.SERVER_TIMESTAMP
+            })
+            st.success(L['success'])
 
-    # --- صفحة شركات التركيب ---
     elif page == L['comp']:
         st.title(L['comp'])
-        companies = [
-            {"name": "شمس أكتوبر", "loc": "6 أكتوبر", "rate": "⭐ 4.9"},
-            {"name": "إيجيبت سولار", "loc": "القاهرة", "rate": "⭐ 4.7"}
-        ]
-        for c in companies:
-            with st.expander(f"📍 {c['name']}"):
-                st.write(f"الموقع: {c['loc']}")
-                st.write(f"التقييم: {c['rate']}")
-                st.button(f"طلب معاينة من {c['name']}")
+        st.info("KarmSolar - Cairo Solar")
 
-    # --- صفحة طلباتي (عرض من Firestore) ---
     elif page == L['orders']:
         st.title(L['orders'])
         docs = db.collection("solar_calculations").where("user", "==", username).stream()
         for doc in docs:
             d = doc.to_dict()
-            st.info(f"✅ حساب قدرة: {d.get('daily_energy')} Wh | التاريخ: {d.get('timestamp')}")
+            st.info(f"✅ {d.get('daily_energy')} Wh - {d.get('timestamp')}")
 
-    # --- صفحة تواصل معنا ---
     elif page == L['contact']:
         st.title(L['contact'])
-        with st.form("contact_form"):
-            msg = st.text_area("رسالتك أو استفسارك")
+        with st.form("contact"):
+            msg = st.text_area("رسالتك")
             if st.form_submit_button("إرسال"):
                 db.collection("messages").add({
                     "user": username,
                     "message": msg,
                     "timestamp": firestore.SERVER_TIMESTAMP
                 })
-                st.success("تم الإرسال بنجاح!")
+                st.success("تم!")
 
-# --- Footer ---
 st.markdown("---")
 st.caption("VPC Solar Pro © 2026")
