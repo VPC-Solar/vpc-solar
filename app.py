@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit_authenticator as stauth
 import json
 import pandas as pd
 import plotly.express as px
@@ -15,6 +14,7 @@ st.set_page_config(page_title="VPC Solar Pro", page_icon="☀️", layout="wide"
 if 'lang' not in st.session_state:
     st.session_state.lang = 'ar'
 
+# قاموس الترجمة
 texts = {
     'ar': {
         'title': "☀️ VPC Solar Pro",
@@ -26,7 +26,11 @@ texts = {
         'logout': "تسجيل خروج",
         'save': "حفظ الحسابات",
         'success': "تم حفظ البيانات بنجاح",
-        'lang_btn': "🌐 English"
+        'lang_btn': "🌐 English",
+        'login_title': "تسجيل الدخول",
+        'user_label': "اسم المستخدم",
+        'pass_label': "كلمة المرور",
+        'login_btn': "دخول"
     },
     'en': {
         'title': "☀️ VPC Solar Pro",
@@ -38,7 +42,11 @@ texts = {
         'logout': "Logout",
         'save': "Save Data",
         'success': "Data saved successfully",
-        'lang_btn': "🌐 العربية"
+        'lang_btn': "🌐 العربية",
+        'login_title': "Login",
+        'user_label': "Username",
+        'pass_label': "Password",
+        'login_btn': "Login"
     }
 }
 L = texts[st.session_state.lang]
@@ -55,98 +63,94 @@ except Exception as e:
     st.error(f"Firestore Error: {e}")
 
 # =========================================
-# 3. نظام تسجيل الدخول (التعديل الجذري هنا)
+# 3. نظام تسجيل الدخول (Simple & Secure)
 # =========================================
-credentials = {
-    "usernames": {
-        "mohamed": {
-            "name": "Mohamed",
-            "password": "$2b$12$LQv3c1yqBW5l4Y6x2L1M8e8jM2lM9vJk7hM5sFQ9x9Q4mV8L2zY5K"
-        }
-    }
-}
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
 
-authenticator = stauth.Authenticate(
-    credentials, 
-    "vpcsolar_cookie", 
-    "abcdef", 
-    cookie_expiry_days=30
-)
+if not st.session_state.logged_in:
+    st.title(L['login_title'])
+    with st.form("login_form"):
+        user_input = st.text_input(L['user_label'])
+        pass_input = st.text_input(L['pass_label'], type="password")
+        if st.form_submit_button(L['login_btn']):
+            if user_input == "mohamed" and pass_input == "123456":
+                st.session_state.logged_in = True
+                st.session_state.username = user_input
+                st.rerun()
+            else:
+                st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
+    st.stop()
 
-# في الإصدار الجديد، الدالة لا تعيد 3 قيم مباشرة، نكتفي باستدعائها
-authenticator.login(location="main")
+# =========================================
+# 4. التطبيق الرئيسي (بعد الدخول)
+# =========================================
 
-# نتحقق من حالة الدخول من خلال session_state
-if st.session_state["authentication_status"] == False:
-    st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
-elif st.session_state["authentication_status"] == None:
-    st.warning("برجاء تسجيل الدخول للمتابعة")
-elif st.session_state["authentication_status"]:
-
-    # استخراج البيانات من session_state
-    name = st.session_state["name"]
-    username = st.session_state["username"]
-
-    # --- SIDEBAR ---
-    with st.sidebar:
-        try:
-            st.image("logo.png", width=150)
-        except:
-            st.write("☀️ VPC Solar")
+# --- SIDEBAR ---
+with st.sidebar:
+    try:
+        st.image("logo.png", width=150)
+    except:
+        st.title("☀️ VPC Solar")
+    
+    st.write(f"👤 {L['welcome']} {st.session_state.username}")
+    
+    if st.button(L['lang_btn']):
+        st.session_state.lang = 'en' if st.session_state.lang == 'ar' else 'ar'
+        st.rerun()
         
-        st.write(f"👤 {L['welcome']} {name}")
-        
-        if st.button(L['lang_btn']):
-            st.session_state.lang = 'en' if st.session_state.lang == 'ar' else 'ar'
-            st.rerun()
-            
-        page = st.radio("Menu", [L['calc'], L['comp'], L['orders'], L['contact']])
-        authenticator.logout(L['logout'], "sidebar")
+    page = st.radio("القائمة / Menu", [L['calc'], L['comp'], L['orders'], L['contact']])
+    
+    if st.button(L['logout']):
+        st.session_state.logged_in = False
+        st.rerun()
 
-    # --- صفحات التطبيق ---
-    if page == L['calc']:
-        st.title(L['calc'])
-        col1, col2 = st.columns(2)
-        with col1:
-            power = st.number_input("وات", min_value=10, value=1000)
-            hours = st.number_input("ساعات", min_value=1, value=5)
-        with col2:
-            voltage = st.selectbox("الجهد", [12, 24, 48])
-            
-        daily_energy = power * hours
-        st.metric(label="الاستهلاك", value=f"{daily_energy} Wh")
+# --- حاسبة الطاقة الشمسية ---
+if page == L['calc']:
+    st.title(L['calc'])
+    col1, col2 = st.columns(2)
+    with col1:
+        power = st.number_input("إجمالي الأحمال (وات)", min_value=10, value=1000)
+        hours = st.number_input("ساعات التشغيل", min_value=1, value=5)
+    with col2:
+        voltage = st.selectbox("جهد النظام", [12, 24, 48])
         
-        if st.button(L['save']):
-            db.collection("solar_calculations").add({
-                "user": username,
-                "power_w": power,
-                "daily_energy": daily_energy,
+    daily_energy = power * hours
+    st.metric("الاستهلاك اليومي", f"{daily_energy} Wh")
+    
+    if st.button(L['save']):
+        db.collection("solar_calculations").add({
+            "user": st.session_state.username,
+            "daily_energy": daily_energy,
+            "timestamp": firestore.SERVER_TIMESTAMP
+        })
+        st.success(L['success'])
+
+# --- صفحة الشركات ---
+elif page == L['comp']:
+    st.title(L['comp'])
+    st.info("📍 قائمة الشركات المعتمدة (KarmSolar, Cairo Solar, Sunprism)")
+
+# --- صفحة طلباتي ---
+elif page == L['orders']:
+    st.title(L['orders'])
+    docs = db.collection("solar_calculations").where("user", "==", st.session_state.username).stream()
+    for doc in docs:
+        d = doc.to_dict()
+        st.info(f"✅ حساب قدرة: {d.get('daily_energy')} Wh | التاريخ: {d.get('timestamp')}")
+
+# --- تواصل معنا ---
+elif page == L['contact']:
+    st.title(L['contact'])
+    with st.form("contact"):
+        msg = st.text_area("رسالتك")
+        if st.form_submit_button("إرسال"):
+            db.collection("messages").add({
+                "user": st.session_state.username,
+                "message": msg,
                 "timestamp": firestore.SERVER_TIMESTAMP
             })
-            st.success(L['success'])
-
-    elif page == L['comp']:
-        st.title(L['comp'])
-        st.info("KarmSolar - Cairo Solar")
-
-    elif page == L['orders']:
-        st.title(L['orders'])
-        docs = db.collection("solar_calculations").where("user", "==", username).stream()
-        for doc in docs:
-            d = doc.to_dict()
-            st.info(f"✅ {d.get('daily_energy')} Wh - {d.get('timestamp')}")
-
-    elif page == L['contact']:
-        st.title(L['contact'])
-        with st.form("contact"):
-            msg = st.text_area("رسالتك")
-            if st.form_submit_button("إرسال"):
-                db.collection("messages").add({
-                    "user": username,
-                    "message": msg,
-                    "timestamp": firestore.SERVER_TIMESTAMP
-                })
-                st.success("تم!")
+            st.success("تم الإرسال!")
 
 st.markdown("---")
 st.caption("VPC Solar Pro © 2026")
