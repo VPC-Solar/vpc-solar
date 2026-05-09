@@ -1,16 +1,30 @@
 import streamlit as st
+import streamlit_authenticator as stauth
 import json
 import pandas as pd
 import plotly.express as px
 from google.oauth2 import service_account
 from google.cloud import firestore
+from PIL import Image
 
-# ==============================
+# =========================================
+# PAGE CONFIG
+# =========================================
+
+st.set_page_config(
+    page_title="VPC Solar",
+    page_icon="☀️",
+    layout="wide"
+)
+
+# =========================================
 # FIREBASE CONNECTION
-# ==============================
+# =========================================
 
 try:
+
     if "textkey" in st.secrets:
+
         key_dict = json.loads(st.secrets["textkey"])
 
         creds = service_account.Credentials.from_service_account_info(
@@ -23,390 +37,434 @@ try:
         )
 
 except Exception as e:
+
     st.error(f"Firestore Error: {e}")
 
-# ==============================
-# PAGE CONFIG
-# ==============================
+# =========================================
+# LOGIN SYSTEM
+# =========================================
 
-st.set_page_config(
-    page_title="VPC Solar",
-    page_icon="☀️",
-    layout="wide"
+names = ["Mohamed", "Ahmed"]
+
+usernames = ["mohamed", "ahmed"]
+
+passwords = ["123456", "abcdef"]
+
+hashed_passwords = stauth.Hasher(passwords).generate()
+
+authenticator = stauth.Authenticate(
+    {
+        "usernames": {
+            usernames[i]: {
+                "name": names[i],
+                "password": hashed_passwords[i]
+            }
+            for i in range(len(usernames))
+        }
+    },
+    "vpcsolar",
+    "abcdef",
+    cookie_expiry_days=30
 )
 
-# ==============================
-# CUSTOM CSS
-# ==============================
+name, authentication_status, username = authenticator.login(
+    "Login",
+    "main"
+)
 
-st.markdown("""
-<style>
+# =========================================
+# LOGIN CHECK
+# =========================================
 
-.main {
-    direction: rtl;
-    text-align: right;
-}
+if authentication_status == False:
 
-section[data-testid="stSidebar"] {
-    direction: rtl;
-}
+    st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
 
-.stButton > button {
-    background-color: #00BFFF;
-    color: white;
-    border-radius: 12px;
-    height: 50px;
-    width: 100%;
-    border: none;
-    font-size: 18px;
-    font-weight: bold;
-}
+elif authentication_status == None:
 
-.stButton > button:hover {
-    background-color: #0099cc;
-}
+    st.warning("من فضلك سجل الدخول")
 
-.block-container {
-    padding-top: 2rem;
-}
+elif authentication_status:
 
-</style>
-""", unsafe_allow_html=True)
+    # =========================================
+    # CUSTOM CSS
+    # =========================================
 
-# ==============================
-# SIDEBAR
-# ==============================
+    st.markdown("""
+    <style>
 
-with st.sidebar:
+    .main {
+        direction: rtl;
+        text-align: right;
+    }
 
-    st.title("☀️ VPC Solar")
+    section[data-testid="stSidebar"] {
+        direction: rtl;
+    }
 
-    st.write("حلول الطاقة الشمسية الذكية")
+    .stButton > button {
+        background-color: #00BFFF;
+        color: white;
+        border-radius: 12px;
+        height: 50px;
+        width: 100%;
+        border: none;
+        font-size: 18px;
+        font-weight: bold;
+    }
 
-    page = st.radio(
-        "القائمة",
-        [
-            "الرئيسية",
-            "حاسبة الطاقة الشمسية",
-            "شركات التركيب",
-            "خطط المتابعة",
-            "تواصل معنا"
-        ]
-    )
+    .stButton > button:hover {
+        background-color: #0099cc;
+    }
 
-# ==============================
-# HOME PAGE
-# ==============================
+    </style>
+    """, unsafe_allow_html=True)
 
-if page == "الرئيسية":
+    # =========================================
+    # LOAD LOGO
+    # =========================================
 
-    st.title("☀️ VPC Solar")
+    logo = Image.open("logo.png")
 
-    st.subheader("Smart Solar Solutions")
+    # =========================================
+    # SIDEBAR
+    # =========================================
 
-    st.markdown("---")
+    with st.sidebar:
 
-    col1, col2 = st.columns(2)
+        st.image(logo, width=180)
 
-    with col1:
+        st.title("☀️ VPC Solar")
 
-        st.markdown("## 🏠 الأنظمة السكنية")
+        st.write(f"Welcome {name}")
 
-        st.write(
-            "حلول متكاملة لتشغيل المنازل بالطاقة الشمسية."
+        authenticator.logout("Logout", "sidebar")
+
+        page = st.radio(
+            "القائمة",
+            [
+                "الرئيسية",
+                "حاسبة الطاقة الشمسية",
+                "شركات التركيب",
+                "خطط المتابعة",
+                "تواصل معنا"
+            ]
         )
 
-        st.button("استكشف الأنظمة السكنية")
+    # =========================================
+    # HOME PAGE
+    # =========================================
 
-    with col2:
+    if page == "الرئيسية":
 
-        st.markdown("## 🚜 الأنظمة الزراعية")
+        st.title("☀️ VPC Solar")
 
-        st.write(
-            "أنظمة ري وطلمبات تعمل بالطاقة الشمسية."
-        )
+        st.subheader("Smart Solar Solutions")
 
-        st.button("استكشف الأنظمة الزراعية")
+        st.markdown("---")
 
-# ==============================
-# SOLAR CALCULATOR
-# ==============================
+        col1, col2 = st.columns(2)
 
-elif page == "حاسبة الطاقة الشمسية":
+        with col1:
 
-    st.title("⚡ حاسبة الطاقة الشمسية")
+            st.markdown("## 🏠 الأنظمة السكنية")
 
-    st.markdown("---")
+            st.write(
+                "حلول متكاملة لتشغيل المنازل بالطاقة الشمسية."
+            )
 
-    col1, col2 = st.columns(2)
+            st.button("استكشف الأنظمة السكنية")
 
-    with col1:
+        with col2:
 
-        power = st.number_input(
-            "إجمالي الأحمال (وات)",
-            min_value=100,
-            value=1000
-        )
+            st.markdown("## 🚜 الأنظمة الزراعية")
 
-        hours = st.number_input(
-            "عدد ساعات التشغيل",
-            min_value=1,
-            value=5
-        )
+            st.write(
+                "أنظمة ري وطلمبات تعمل بالطاقة الشمسية."
+            )
 
-    with col2:
+            st.button("استكشف الأنظمة الزراعية")
 
-        voltage = st.selectbox(
-            "جهد النظام",
-            [12, 24, 48]
-        )
+    # =========================================
+    # SOLAR CALCULATOR
+    # =========================================
 
-        battery_backup = st.slider(
-            "عدد ساعات البطارية الاحتياطية",
+    elif page == "حاسبة الطاقة الشمسية":
+
+        st.title("⚡ حاسبة الطاقة الشمسية")
+
+        st.markdown("---")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            power = st.number_input(
+                "إجمالي الأحمال (وات)",
+                min_value=100,
+                value=1000
+            )
+
+            hours = st.number_input(
+                "عدد ساعات التشغيل",
+                min_value=1,
+                value=5
+            )
+
+        with col2:
+
+            voltage = st.selectbox(
+                "جهد النظام",
+                [12, 24, 48]
+            )
+
+            battery_backup = st.slider(
+                "عدد ساعات البطارية الاحتياطية",
+                1,
+                24,
+                5
+            )
+
+        # =========================================
+        # CALCULATIONS
+        # =========================================
+
+        daily_energy = power * hours
+
+        inverter_size = int(power * 1.25)
+
+        panel_count = max(
             1,
-            24,
-            5
+            round(daily_energy / (400 * 5))
         )
 
-    # ==============================
-    # CALCULATIONS
-    # ==============================
-
-    daily_energy = power * hours
-
-    inverter_size = int(power * 1.25)
-
-    panel_count = max(
-        1,
-        round(daily_energy / (400 * 5))
-    )
-
-    battery_capacity = int(
-        (daily_energy * battery_backup)
-        / (voltage * 0.8)
-    )
-
-    estimated_price = (
-        panel_count * 5000
-        + inverter_size * 2
-    )
-
-    st.markdown("---")
-
-    st.subheader("📊 النتائج")
-
-    r1, r2, r3, r4 = st.columns(4)
-
-    r1.metric(
-        "الاستهلاك اليومي",
-        f"{daily_energy} Wh"
-    )
-
-    r2.metric(
-        "قدرة الإنفرتر",
-        f"{inverter_size} W"
-    )
-
-    r3.metric(
-        "عدد الألواح",
-        f"{panel_count}"
-    )
-
-    r4.metric(
-        "البطاريات",
-        f"{battery_capacity} Ah"
-    )
-
-    st.success(
-        f"💰 السعر التقريبي: {estimated_price:,} جنيه"
-    )
-
-    # ==============================
-    # CHART
-    # ==============================
-
-    data = pd.DataFrame({
-        "Component": [
-            "Inverter",
-            "Panels",
-            "Battery"
-        ],
-        "Value": [
-            inverter_size,
-            panel_count,
-            battery_capacity
-        ]
-    })
-
-    fig = px.bar(
-        data,
-        x="Component",
-        y="Value",
-        title="System Components"
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
-
-    # ==============================
-    # SAVE TO FIRESTORE
-    # ==============================
-
-    if st.button("حفظ الحسابات"):
-
-        try:
-
-            db.collection(
-                "solar_calculations"
-            ).add({
-
-                "power": power,
-                "hours": hours,
-                "daily_energy": daily_energy,
-                "inverter": inverter_size,
-                "panels": panel_count,
-                "battery": battery_capacity,
-
-                "timestamp":
-                firestore.SERVER_TIMESTAMP
-            })
-
-            st.success(
-                "تم حفظ البيانات بنجاح"
-            )
-
-        except Exception as e:
-
-            st.error(e)
-
-# ==============================
-# COMPANIES PAGE
-# ==============================
-
-elif page == "شركات التركيب":
-
-    st.title("🏢 شركات التركيب")
-
-    companies = [
-
-        {
-            "name": "شمس أكتوبر",
-            "rating": "⭐ 4.9",
-            "location": "6 أكتوبر"
-        },
-
-        {
-            "name": "إيجيبت سولار",
-            "rating": "⭐ 4.7",
-            "location": "القاهرة"
-        },
-
-        {
-            "name": "النيل للطاقة",
-            "rating": "⭐ 4.8",
-            "location": "الجيزة"
-        }
-
-    ]
-
-    for comp in companies:
-
-        with st.container(border=True):
-
-            st.subheader(comp["name"])
-
-            st.write(comp["rating"])
-
-            st.write(comp["location"])
-
-            st.button(
-                f"طلب تركيب - {comp['name']}"
-            )
-
-# ==============================
-# MONITORING PAGE
-# ==============================
-
-elif page == "خطط المتابعة":
-
-    st.title("📡 خطط المتابعة والصيانة")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-
-        st.subheader("Basic")
-
-        st.write("✔ تنبيهات أعطال")
-
-        st.write("✔ متابعة الإنتاج")
-
-        st.write("✔ تقارير شهرية")
-
-        st.button("اشترك الآن")
-
-    with col2:
-
-        st.subheader("Premium")
-
-        st.write("✔ زيارات صيانة")
-
-        st.write("✔ دعم 24/7")
-
-        st.write("✔ متابعة مباشرة")
-
-        st.button("اشترك Premium")
-
-# ==============================
-# CONTACT PAGE
-# ==============================
-
-elif page == "تواصل معنا":
-
-    st.title("📞 تواصل معنا")
-
-    with st.form("contact_form"):
-
-        name = st.text_input("الاسم")
-
-        email = st.text_input("البريد الإلكتروني")
-
-        message = st.text_area("رسالتك")
-
-        submit = st.form_submit_button(
-            "إرسال"
+        battery_capacity = int(
+            (daily_energy * battery_backup)
+            / (voltage * 0.8)
         )
 
-        if submit:
+        estimated_price = (
+            panel_count * 5000
+            + inverter_size * 2
+        )
+
+        st.markdown("---")
+
+        st.subheader("📊 النتائج")
+
+        r1, r2, r3, r4 = st.columns(4)
+
+        r1.metric(
+            "الاستهلاك اليومي",
+            f"{daily_energy} Wh"
+        )
+
+        r2.metric(
+            "قدرة الإنفرتر",
+            f"{inverter_size} W"
+        )
+
+        r3.metric(
+            "عدد الألواح",
+            f"{panel_count}"
+        )
+
+        r4.metric(
+            "البطاريات",
+            f"{battery_capacity} Ah"
+        )
+
+        st.success(
+            f"💰 السعر التقريبي: {estimated_price:,} جنيه"
+        )
+
+        # =========================================
+        # CHART
+        # =========================================
+
+        data = pd.DataFrame({
+            "Component": [
+                "Inverter",
+                "Panels",
+                "Battery"
+            ],
+            "Value": [
+                inverter_size,
+                panel_count,
+                battery_capacity
+            ]
+        })
+
+        fig = px.bar(
+            data,
+            x="Component",
+            y="Value",
+            title="System Components"
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+        # =========================================
+        # SAVE DATA
+        # =========================================
+
+        if st.button("حفظ الحسابات"):
 
             try:
 
                 db.collection(
-                    "messages"
+                    "solar_calculations"
                 ).add({
 
-                    "name": name,
-                    "email": email,
-                    "message": message,
+                    "user": username,
+                    "power": power,
+                    "hours": hours,
+                    "daily_energy": daily_energy,
+                    "inverter": inverter_size,
+                    "panels": panel_count,
+                    "battery": battery_capacity,
 
                     "timestamp":
                     firestore.SERVER_TIMESTAMP
                 })
 
                 st.success(
-                    "تم إرسال الرسالة بنجاح"
+                    "تم حفظ البيانات بنجاح"
                 )
 
             except Exception as e:
 
                 st.error(e)
 
-# ==============================
-# FOOTER
-# ==============================
+    # =========================================
+    # COMPANIES PAGE
+    # =========================================
 
-st.markdown("---")
+    elif page == "شركات التركيب":
 
-st.caption("VPC Solar © 2026")
+        st.title("🏢 شركات التركيب")
+
+        companies = [
+
+            {
+                "name": "شمس أكتوبر",
+                "rating": "⭐ 4.9",
+                "location": "6 أكتوبر"
+            },
+
+            {
+                "name": "إيجيبت سولار",
+                "rating": "⭐ 4.7",
+                "location": "القاهرة"
+            },
+
+            {
+                "name": "النيل للطاقة",
+                "rating": "⭐ 4.8",
+                "location": "الجيزة"
+            }
+
+        ]
+
+        for comp in companies:
+
+            with st.container(border=True):
+
+                st.subheader(comp["name"])
+
+                st.write(comp["rating"])
+
+                st.write(comp["location"])
+
+                st.button(
+                    f"طلب تركيب - {comp['name']}"
+                )
+
+    # =========================================
+    # MONITORING PAGE
+    # =========================================
+
+    elif page == "خطط المتابعة":
+
+        st.title("📡 خطط المتابعة والصيانة")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.subheader("Basic")
+
+            st.write("✔ تنبيهات أعطال")
+
+            st.write("✔ متابعة الإنتاج")
+
+            st.write("✔ تقارير شهرية")
+
+            st.button("اشترك الآن")
+
+        with col2:
+
+            st.subheader("Premium")
+
+            st.write("✔ زيارات صيانة")
+
+            st.write("✔ دعم 24/7")
+
+            st.write("✔ متابعة مباشرة")
+
+            st.button("اشترك Premium")
+
+    # =========================================
+    # CONTACT PAGE
+    # =========================================
+
+    elif page == "تواصل معنا":
+
+        st.title("📞 تواصل معنا")
+
+        with st.form("contact_form"):
+
+            name_input = st.text_input("الاسم")
+
+            email = st.text_input("البريد الإلكتروني")
+
+            message = st.text_area("رسالتك")
+
+            submit = st.form_submit_button(
+                "إرسال"
+            )
+
+            if submit:
+
+                try:
+
+                    db.collection(
+                        "messages"
+                    ).add({
+
+                        "name": name_input,
+                        "email": email,
+                        "message": message,
+
+                        "timestamp":
+                        firestore.SERVER_TIMESTAMP
+                    })
+
+                    st.success(
+                        "تم إرسال الرسالة بنجاح"
+                    )
+
+                except Exception as e:
+
+                    st.error(e)
+
+    # =========================================
+    # FOOTER
+    # =========================================
+
+    st.markdown("---")
+
+    st.caption("VPC Solar © 2026")
