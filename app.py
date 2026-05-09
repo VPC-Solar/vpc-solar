@@ -50,7 +50,7 @@ usernames = ["mohamed", "ahmed"]
 
 passwords = ["123456", "abcdef"]
 
-hashed_passwords = stauth.Hasher(passwords).hash_passwords()
+hashed_passwords = stauth.Hasher.hash_passwords(passwords)
 
 authenticator = stauth.Authenticate(
     {
