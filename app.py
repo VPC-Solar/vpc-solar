@@ -64,7 +64,13 @@ authenticator = stauth.Authenticate(
     30
 )
 
-name, authentication_status, username = authenticator.login()
+authenticator.login()
+
+authentication_status = st.session_state.get("authentication_status")
+
+name = st.session_state.get("name")
+
+username = st.session_state.get("username")
 
 # =========================================
 # LOGIN CHECK
