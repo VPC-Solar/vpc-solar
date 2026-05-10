@@ -27,51 +27,50 @@ except Exception as e:
     st.error(f"Firestore Error: {e}")
 
 # =========================================
-# DYNAMIC LOGIN SYSTEM (القراءة من Firestore)
+# 🔐 DYNAMIC LOGIN SYSTEM
 # =========================================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
     st.title("🔐 تسجيل الدخول")
-    username_input = st.text_input("اسم المستخدم")
-    password_input = st.text_input("كلمة المرور", type="password")
+    
+    user_in = st.text_input("اسم المستخدم")
+    pass_in = st.text_input("كلمة المرور", type="password")
 
     if st.button("Login"):
-        # 1. الدخول الافتراضي (للاحتياط أو للمطور)
-        if username_input == "mohamed" and password_input == "123456":
+        # الدخول الافتراضي للمطور
+        if user_in == "mohamed" and pass_in == "123456":
             st.session_state.logged_in = True
-            st.session_state.username = username_input
+            st.session_state.username = user_in
             st.rerun()
         else:
             try:
-                # 2. البحث عن المستخدم في مجموعة users بـ Firestore
+                # التحقق من قاعدة بيانات المستخدمين
                 users_ref = db.collection("users")
-                query = users_ref.where("username", "==", username_input).stream()
+                query = users_ref.where("username", "==", user_in).stream()
                 
-                user_found = False
+                found = False
                 for doc in query:
                     user_data = doc.to_dict()
-                    # التحقق من تطابق الباسورد المخزن
-                    if user_data.get("password") == password_input:
+                    if user_data.get("password") == pass_in:
                         st.session_state.logged_in = True
-                        st.session_state.username = username_input
-                        user_found = True
+                        st.session_state.username = user_in
+                        found = True
                         st.rerun()
                 
-                if not user_found:
+                if not found:
                     st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
             except Exception as e:
-                st.error(f"خطأ في قاعدة البيانات: {e}")
+                st.error(f"خطأ في الاتصال بقاعدة البيانات: {e}")
     st.stop()
 
 # =========================================
-# MAIN APP (بعد نجاح تسجيل الدخول)
+# MAIN APP (بعد تسجيل الدخول)
 # =========================================
 if st.session_state.logged_in:
     username = st.session_state.username
 
-    # CSS لتنسيق الاتجاه والواجهة
     st.markdown("""
     <style>
     .main { direction: rtl; text-align: right; }
@@ -90,7 +89,7 @@ if st.session_state.logged_in:
     </style>
     """, unsafe_allow_html=True)
 
-    # تحميل اللوجو (تأكد من وجود ملف logo.png بجانب الكود)
+    # تحميل اللوجو
     try:
         logo = Image.open("logo.png")
     except:
@@ -101,9 +100,9 @@ if st.session_state.logged_in:
         if logo:
             st.image(logo, width=180)
         st.title("☀️ VPC Solar")
-        st.write(f"Welcome {username}")
+        st.write(f"مرحباً بك: {username}")
 
-        if st.button("Logout"):
+        if st.button("تسجيل الخروج"):
             st.session_state.logged_in = False
             st.rerun()
 
@@ -154,7 +153,6 @@ if st.session_state.logged_in:
 
         st.success(f"💰 السعر التقريبي: {estimated_price:,} جنيه")
 
-        # الرسم البياني
         data = pd.DataFrame({
             "Component": ["Inverter", "Panels", "Battery"],
             "Value": [inverter_size, panel_count, battery_capacity]
@@ -236,7 +234,6 @@ if st.session_state.logged_in:
             if submit_register:
                 try:
                     users_ref = db.collection("users")
-                    # التحقق من وجود المستخدم
                     query = users_ref.where("username", "==", new_username).stream()
                     if any(query):
                         st.error("اسم المستخدم موجود بالفعل")
