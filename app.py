@@ -9,7 +9,6 @@ from PIL import Image
 # =========================================
 # PAGE CONFIG
 # =========================================
-
 st.set_page_config(
     page_title="VPC Solar",
     page_icon="☀️",
@@ -19,7 +18,6 @@ st.set_page_config(
 # =========================================
 # FIREBASE CONNECTION
 # =========================================
-
 try:
     if "textkey" in st.secrets:
         key_dict = json.loads(st.secrets["textkey"])
@@ -29,32 +27,51 @@ except Exception as e:
     st.error(f"Firestore Error: {e}")
 
 # =========================================
-# SIMPLE LOGIN SYSTEM
+# DYNAMIC LOGIN SYSTEM (القراءة من Firestore)
 # =========================================
-
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
     st.title("🔐 تسجيل الدخول")
-    username = st.text_input("اسم المستخدم")
-    password = st.text_input("كلمة المرور", type="password")
+    username_input = st.text_input("اسم المستخدم")
+    password_input = st.text_input("كلمة المرور", type="password")
 
     if st.button("Login"):
-        if username == "mohamed" and password == "123456":
+        # 1. الدخول الافتراضي (للاحتياط أو للمطور)
+        if username_input == "mohamed" and password_input == "123456":
             st.session_state.logged_in = True
-            st.session_state.username = username
+            st.session_state.username = username_input
             st.rerun()
         else:
-            st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
+            try:
+                # 2. البحث عن المستخدم في مجموعة users بـ Firestore
+                users_ref = db.collection("users")
+                query = users_ref.where("username", "==", username_input).stream()
+                
+                user_found = False
+                for doc in query:
+                    user_data = doc.to_dict()
+                    # التحقق من تطابق الباسورد المخزن
+                    if user_data.get("password") == password_input:
+                        st.session_state.logged_in = True
+                        st.session_state.username = username_input
+                        user_found = True
+                        st.rerun()
+                
+                if not user_found:
+                    st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
+            except Exception as e:
+                st.error(f"خطأ في قاعدة البيانات: {e}")
+    st.stop()
 
 # =========================================
-# MAIN APP
+# MAIN APP (بعد نجاح تسجيل الدخول)
 # =========================================
-
 if st.session_state.logged_in:
     username = st.session_state.username
 
+    # CSS لتنسيق الاتجاه والواجهة
     st.markdown("""
     <style>
     .main { direction: rtl; text-align: right; }
@@ -73,10 +90,16 @@ if st.session_state.logged_in:
     </style>
     """, unsafe_allow_html=True)
 
-    logo = Image.open("logo.png")
+    # تحميل اللوجو (تأكد من وجود ملف logo.png بجانب الكود)
+    try:
+        logo = Image.open("logo.png")
+    except:
+        logo = None
 
+    # --- SIDEBAR ---
     with st.sidebar:
-        st.image(logo, width=180)
+        if logo:
+            st.image(logo, width=180)
         st.title("☀️ VPC Solar")
         st.write(f"Welcome {username}")
 
@@ -84,20 +107,12 @@ if st.session_state.logged_in:
             st.session_state.logged_in = False
             st.rerun()
 
-        # الخطوة الثانية: تحديث القائمة لإضافة "إنشاء حساب"
         page = st.radio(
             "القائمة",
-            [
-                "الرئيسية",
-                "حاسبة الطاقة الشمسية",
-                "شركات التركيب",
-                "خطط المتابعة",
-                "تواصل معنا",
-                "إنشاء حساب"
-            ]
+            ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة", "تواصل معنا", "إنشاء حساب"]
         )
 
-    # --- الرئيسية ---
+    # --- صفحات التطبيق ---
     if page == "الرئيسية":
         st.title("☀️ VPC Solar")
         st.subheader("Smart Solar Solutions")
@@ -112,7 +127,6 @@ if st.session_state.logged_in:
             st.write("أنظمة ري وطلمبات تعمل بالطاقة الشمسية.")
             st.button("استكشف الأنظمة الزراعية")
 
-    # --- حاسبة الطاقة ---
     elif page == "حاسبة الطاقة الشمسية":
         st.title("⚡ حاسبة الطاقة الشمسية")
         st.markdown("---")
@@ -140,6 +154,7 @@ if st.session_state.logged_in:
 
         st.success(f"💰 السعر التقريبي: {estimated_price:,} جنيه")
 
+        # الرسم البياني
         data = pd.DataFrame({
             "Component": ["Inverter", "Panels", "Battery"],
             "Value": [inverter_size, panel_count, battery_capacity]
@@ -163,7 +178,6 @@ if st.session_state.logged_in:
             except Exception as e:
                 st.error(e)
 
-    # --- شركات التركيب ---
     elif page == "شركات التركيب":
         st.title("🏢 شركات التركيب")
         companies = [
@@ -178,7 +192,6 @@ if st.session_state.logged_in:
                 st.write(comp["location"])
                 st.button(f"طلب تركيب - {comp['name']}")
 
-    # --- خطط المتابعة ---
     elif page == "خطط المتابعة":
         st.title("📡 خطط المتابعة والصيانة")
         col1, col2 = st.columns(2)
@@ -195,7 +208,6 @@ if st.session_state.logged_in:
             st.write("✔ متابعة مباشرة")
             st.button("اشترك Premium")
 
-    # --- تواصل معنا ---
     elif page == "تواصل معنا":
         st.title("📞 تواصل معنا")
         with st.form("contact_form"):
@@ -206,16 +218,13 @@ if st.session_state.logged_in:
             if submit:
                 try:
                     db.collection("messages").add({
-                        "name": name_input,
-                        "email": email,
-                        "message": message,
+                        "name": name_input, "email": email, "message": message,
                         "timestamp": firestore.SERVER_TIMESTAMP
                     })
                     st.success("تم إرسال الرسالة بنجاح")
                 except Exception as e:
                     st.error(e)
 
-    # --- الخطوة الثالثة: إضافة صفحة إنشاء حساب ---
     elif page == "إنشاء حساب":
         st.title("📝 إنشاء حساب جديد")
         with st.form("register_form"):
@@ -227,10 +236,9 @@ if st.session_state.logged_in:
             if submit_register:
                 try:
                     users_ref = db.collection("users")
+                    # التحقق من وجود المستخدم
                     query = users_ref.where("username", "==", new_username).stream()
-                    existing_user = any(query)
-
-                    if existing_user:
+                    if any(query):
                         st.error("اسم المستخدم موجود بالفعل")
                     else:
                         users_ref.add({
