@@ -134,33 +134,40 @@ if st.session_state.logged_in:
             power = st.number_input("إجمالي الأحمال (وات)", min_value=100, value=1000)
             hours = st.number_input("عدد ساعات التشغيل", min_value=1, value=5)
         with col2:
-            voltage = st.selectbox("جهد النظام", [12, 24, 48])
+            voltage = st.selectbox("جهد النظام (Volt)", [12, 24, 48])
             battery_backup = st.slider("عدد ساعات البطارية الاحتياطية", 1, 24, 5)
 
-        daily_energy = power * hours
+        # --- المعادلات التقنية الدقيقة ---
+        # إضافة معامل فقد 20% لضمان كفاءة النظام
+        daily_energy = (power * hours) / 0.8 
+        # قدرة الإنفرتر مع معامل أمان 25% (لتحمل تيار البدء)
         inverter_size = int(power * 1.25)
+        # عدد الألواح (بافتراض لوح 400 وات ومتوسط سطوع شمس 5 ساعات)
         panel_count = max(1, round(daily_energy / (400 * 5)))
-        battery_capacity = int((daily_energy * battery_backup) / (voltage * 0.8))
-        estimated_price = (panel_count * 5000 + inverter_size * 2)
+        # سعة البطارية مع مراعاة عمق التفريغ 50% للبطاريات الجل
+        battery_capacity = int((daily_energy * (battery_backup/hours)) / (voltage * 0.5))
+        # تقدير سعري مبدئي
+        estimated_price = (panel_count * 6500 + inverter_size * 5 + battery_capacity * 40)
 
         st.markdown("---")
         st.subheader("📊 النتائج")
         r1, r2, r3, r4 = st.columns(4)
-        r1.metric("الاستهلاك اليومي", f"{daily_energy} Wh")
+        r1.metric("الاستهلاك اليومي", f"{int(daily_energy)} Wh")
         r2.metric("قدرة الإنفرتر", f"{inverter_size} W")
-        r3.metric("عدد الألواح", f"{panel_count}")
-        r4.metric("البطاريات", f"{battery_capacity} Ah")
+        r3.metric("عدد الألواح (400W)", f"{panel_count}")
+        r4.metric("البطاريات المطلوبة", f"{battery_capacity} Ah")
 
-        st.success(f"💰 السعر التقريبي: {estimated_price:,} جنيه")
+        st.success(f"💰 السعر التقريبي للمكونات الأساسية: {estimated_price:,} جنيه")
 
+        # الرسم البياني
         data = pd.DataFrame({
-            "Component": ["Inverter", "Panels", "Battery"],
+            "Component": ["Inverter (W)", "Panels (Qty)", "Battery (Ah)"],
             "Value": [inverter_size, panel_count, battery_capacity]
         })
-        fig = px.bar(data, x="Component", y="Value", title="System Components")
+        fig = px.bar(data, x="Component", y="Value", title="مواصفات النظام المقترح", color="Component")
         st.plotly_chart(fig, use_container_width=True)
 
-        if st.button("حفظ الحسابات"):
+        if st.button("حفظ الحسابات في ملفك"):
             try:
                 db.collection("solar_calculations").add({
                     "user": username,
@@ -172,71 +179,70 @@ if st.session_state.logged_in:
                     "battery": battery_capacity,
                     "timestamp": firestore.SERVER_TIMESTAMP
                 })
-                st.success("تم حفظ البيانات بنجاح")
+                st.success("تم حفظ الحسابات بنجاح في قاعدة البيانات")
             except Exception as e:
-                st.error(e)
+                st.error(f"فشل الحفظ: {e}")
 
     elif page == "شركات التركيب":
-        st.title("🏢 شركات التركيب")
+        st.title("🏢 شركات التركيب المعتمدة")
         companies = [
-            {"name": "شمس أكتوبر", "rating": "⭐ 4.9", "location": "6 أكتوبر"},
-            {"name": "إيجيبت سولار", "rating": "⭐ 4.7", "location": "القاهرة"},
-            {"name": "النيل للطاقة", "rating": "⭐ 4.8", "location": "الجيزة"}
+            {"name": "شمس أكتوبر", "rating": "⭐ 4.9", "location": "6 أكتوبر - المنطقة الصناعية"},
+            {"name": "إيجيبت سولار", "rating": "⭐ 4.7", "location": "القاهرة - التجمع"},
+            {"name": "النيل للطاقة", "rating": "⭐ 4.8", "location": "الجيزة - الدقي"}
         ]
         for comp in companies:
             with st.container(border=True):
                 st.subheader(comp["name"])
-                st.write(comp["rating"])
-                st.write(comp["location"])
-                st.button(f"طلب تركيب - {comp['name']}")
+                st.write(f"التقييم: {comp['rating']}")
+                st.write(f"الموقع: {comp['location']}")
+                st.button(f"طلب معاينة من {comp['name']}")
 
     elif page == "خطط المتابعة":
-        st.title("📡 خطط المتابعة والصيانة")
+        st.title("📡 أنظمة المتابعة الذكية (IoT)")
+        st.info("هذه الخدمة تتيح لك مراقبة إنتاج توربينات الرياح وألواح الطاقة الشمسية لحظة بلحظة.")
         col1, col2 = st.columns(2)
         with col1:
-            st.subheader("Basic")
-            st.write("✔ تنبيهات أعطال")
-            st.write("✔ متابعة الإنتاج")
-            st.write("✔ تقارير شهرية")
-            st.button("اشترك الآن")
+            st.subheader("خطة المتابعة الأساسية")
+            st.write("✔ تنبيهات الأعطال عبر التطبيق")
+            st.write("✔ تقرير إنتاج شهري")
+            st.button("تفعيل الخدمة الأساسية")
         with col2:
-            st.subheader("Premium")
-            st.write("✔ زيارات صيانة")
-            st.write("✔ دعم 24/7")
-            st.write("✔ متابعة مباشرة")
-            st.button("اشترك Premium")
+            st.subheader("خطة المتابعة المتقدمة")
+            st.write("✔ لوحة تحكم لحظية (Live Dashboard)")
+            st.write("✔ تحليل الاهتزازات وصيانة تنبؤية")
+            st.button("اشترك في الخطة المتقدمة")
 
     elif page == "تواصل معنا":
-        st.title("📞 تواصل معنا")
+        st.title("📞 تواصل مع فريق VPC Solar")
         with st.form("contact_form"):
-            name_input = st.text_input("الاسم")
+            name_input = st.text_input("الاسم بالكامل")
             email = st.text_input("البريد الإلكتروني")
-            message = st.text_area("رسالتك")
-            submit = st.form_submit_button("إرسال")
+            message = st.text_area("كيف يمكننا مساعدتك؟")
+            submit = st.form_submit_button("إرسال الرسالة")
             if submit:
                 try:
                     db.collection("messages").add({
                         "name": name_input, "email": email, "message": message,
                         "timestamp": firestore.SERVER_TIMESTAMP
                     })
-                    st.success("تم إرسال الرسالة بنجاح")
+                    st.success("شكراً لتواصلك معنا، سيقوم فريقنا بالرد عليك قريباً.")
                 except Exception as e:
-                    st.error(e)
+                    st.error(f"حدث خطأ: {e}")
 
     elif page == "إنشاء حساب":
-        st.title("📝 إنشاء حساب جديد")
+        st.title("📝 إنشاء حساب مستخدم جديد")
         with st.form("register_form"):
-            new_username = st.text_input("اسم المستخدم")
+            new_username = st.text_input("اختر اسم المستخدم")
             new_email = st.text_input("البريد الإلكتروني")
             new_password = st.text_input("كلمة المرور", type="password")
-            submit_register = st.form_submit_button("إنشاء الحساب")
+            submit_register = st.form_submit_button("إتمام التسجيل")
 
             if submit_register:
                 try:
                     users_ref = db.collection("users")
                     query = users_ref.where("username", "==", new_username).stream()
                     if any(query):
-                        st.error("اسم المستخدم موجود بالفعل")
+                        st.error("عذراً، اسم المستخدم هذا محجوز بالفعل.")
                     else:
                         users_ref.add({
                             "username": new_username,
@@ -244,9 +250,9 @@ if st.session_state.logged_in:
                             "password": new_password,
                             "timestamp": firestore.SERVER_TIMESTAMP
                         })
-                        st.success("تم إنشاء الحساب بنجاح 🔥")
+                        st.success("مبروك! تم إنشاء حسابك بنجاح 🔥")
                 except Exception as e:
-                    st.error(e)
+                    st.error(f"فشل التسجيل: {e}")
 
     st.markdown("---")
-    st.caption("VPC Solar © 2026")
+    st.caption("VPC Solar Ecosystem Pro © 2026 | تطوير المهندس أبو سعد")
