@@ -7,12 +7,16 @@ from google.cloud import firestore
 from PIL import Image
 
 # =========================================
-# 1. CONFIG & SETTINGS
+# PAGE CONFIG
 # =========================================
-st.set_page_config(page_title="VPC Solar", page_icon="☀️", layout="wide")
+st.set_page_config(
+    page_title="VPC Solar",
+    page_icon="☀️",
+    layout="wide"
+)
 
 # =========================================
-# 2. FIREBASE CONNECTION
+# FIREBASE CONNECTION
 # =========================================
 try:
     if "textkey" in st.secrets:
@@ -23,149 +27,226 @@ except Exception as e:
     st.error(f"Firestore Error: {e}")
 
 # =========================================
-# 3. 🌐 MULTI-LANGUAGE DICTIONARY
+# 🔐 DYNAMIC LOGIN SYSTEM
 # =========================================
-texts = {
-    'ar': {
-        'welcome': "مرحباً بك", 'logout': "خروج", 'menu': "القائمة",
-        'home': "الرئيسية", 'calc': "حاسبة الطاقة الشمسية", 'comp': "شركات التركيب",
-        'plans': "خطط المتابعة", 'contact': "تواصل معنا", 'reg': "إنشاء حساب",
-        'login_title': "🔐 تسجيل الدخول", 'user_label': "اسم المستخدم",
-        'pass_label': "كلمة المرور", 'login_btn': "دخول",
-        'error_msg': "اسم المستخدم أو كلمة المرور غير صحيحة",
-        'sys_results': "📊 نتائج النظام المتوقعة"
-    },
-    'en': {
-        'welcome': "Welcome", 'logout': "Logout", 'menu': "Menu",
-        'home': "Home", 'calc': "Solar Calculator", 'comp': "Installers",
-        'plans': "Monitoring Plans", 'contact': "Contact Us", 'reg': "Register",
-        'login_title': "🔐 Login", 'user_label': "Username",
-        'pass_label': "Password", 'login_btn': "Login",
-        'error_msg': "Invalid username or password",
-        'sys_results': "📊 Expected System Results"
-    }
-}
-
-if 'lang' not in st.session_state: st.session_state.lang = 'ar'
-L = texts[st.session_state.lang]
-
-# =========================================
-# 4. 🔐 DYNAMIC LOGIN SYSTEM
-# =========================================
-if "logged_in" not in st.session_state: st.session_state.logged_in = False
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    st.title(L['login_title'])
-    user_in = st.text_input(L['user_label'])
-    pass_in = st.text_input(L['pass_label'], type="password")
-    if st.button(L['login_btn']):
+    st.title("🔐 تسجيل الدخول")
+    
+    user_in = st.text_input("اسم المستخدم")
+    pass_in = st.text_input("كلمة المرور", type="password")
+
+    if st.button("Login"):
+        # الدخول الافتراضي للمطور
         if user_in == "mohamed" and pass_in == "123456":
             st.session_state.logged_in = True
             st.session_state.username = user_in
             st.rerun()
         else:
             try:
+                # التحقق من قاعدة بيانات المستخدمين
                 users_ref = db.collection("users")
                 query = users_ref.where("username", "==", user_in).stream()
+                
                 found = False
                 for doc in query:
-                    if doc.to_dict().get("password") == pass_in:
+                    user_data = doc.to_dict()
+                    if user_data.get("password") == pass_in:
                         st.session_state.logged_in = True
                         st.session_state.username = user_in
                         found = True
                         st.rerun()
-                if not found: st.error(L['error_msg'])
-            except: st.error("Database Connection Error")
+                
+                if not found:
+                    st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
+            except Exception as e:
+                st.error(f"خطأ في الاتصال بقاعدة البيانات: {e}")
     st.stop()
 
 # =========================================
-# 5. MAIN APP UI (After Login)
+# MAIN APP (بعد تسجيل الدخول)
 # =========================================
-username = st.session_state.username
-direction = "rtl" if st.session_state.lang == 'ar' else "ltr"
+if st.session_state.logged_in:
+    username = st.session_state.username
 
-st.markdown(f"""
-<style>
-    .main {{ direction: {direction}; text-align: {"right" if direction=="rtl" else "left"}; }}
-    section[data-testid="stSidebar"] {{ direction: {direction}; }}
-    .stButton > button {{ background-color: #00BFFF; color: white; border-radius: 10px; width: 100%; }}
-</style>
-""", unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    .main { direction: rtl; text-align: right; }
+    section[data-testid="stSidebar"] { direction: rtl; }
+    .stButton > button {
+        background-color: #00BFFF;
+        color: white;
+        border-radius: 12px;
+        height: 50px;
+        width: 100%;
+        border: none;
+        font-size: 18px;
+        font-weight: bold;
+    }
+    .stButton > button:hover { background-color: #0099cc; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- SIDEBAR ---
-with st.sidebar:
-    st.title("☀️ VPC Solar")
-    st.write(f"{L['welcome']}: {username}")
-    
-    # تبديل اللغة
-    lang_choice = st.selectbox("Language / اللغة", ["العربية", "English"], index=0 if st.session_state.lang == 'ar' else 1)
-    st.session_state.lang = 'ar' if lang_choice == "العربية" else 'en'
-    
-    if st.button(L['logout']):
-        st.session_state.logged_in = False
-        st.rerun()
-    
+    # تحميل اللوجو
+    try:
+        logo = Image.open("logo.png")
+    except:
+        logo = None
+
+    # --- SIDEBAR ---
+    with st.sidebar:
+        if logo:
+            st.image(logo, width=180)
+        st.title("☀️ VPC Solar")
+        st.write(f"مرحباً بك: {username}")
+
+        if st.button("تسجيل الخروج"):
+            st.session_state.logged_in = False
+            st.rerun()
+
+        page = st.radio(
+            "القائمة",
+            ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة", "تواصل معنا", "إنشاء حساب"]
+        )
+
+    # --- صفحات التطبيق ---
+    if page == "الرئيسية":
+        st.title("☀️ VPC Solar")
+        st.subheader("Smart Solar Solutions")
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("## 🏠 الأنظمة السكنية")
+            st.write("حلول متكاملة لتشغيل المنازل بالطاقة الشمسية.")
+            st.button("استكشف الأنظمة السكنية")
+        with col2:
+            st.markdown("## 🚜 الأنظمة الزراعية")
+            st.write("أنظمة ري وطلمبات تعمل بالطاقة الشمسية.")
+            st.button("استكشف الأنظمة الزراعية")
+
+    elif page == "حاسبة الطاقة الشمسية":
+        st.title("⚡ حاسبة الطاقة الشمسية")
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            power = st.number_input("إجمالي الأحمال (وات)", min_value=100, value=1000)
+            hours = st.number_input("عدد ساعات التشغيل", min_value=1, value=5)
+        with col2:
+            voltage = st.selectbox("جهد النظام", [12, 24, 48])
+            battery_backup = st.slider("عدد ساعات البطارية الاحتياطية", 1, 24, 5)
+
+        daily_energy = power * hours
+        inverter_size = int(power * 1.25)
+        panel_count = max(1, round(daily_energy / (400 * 5)))
+        battery_capacity = int((daily_energy * battery_backup) / (voltage * 0.8))
+        estimated_price = (panel_count * 5000 + inverter_size * 2)
+
+        st.markdown("---")
+        st.subheader("📊 النتائج")
+        r1, r2, r3, r4 = st.columns(4)
+        r1.metric("الاستهلاك اليومي", f"{daily_energy} Wh")
+        r2.metric("قدرة الإنفرتر", f"{inverter_size} W")
+        r3.metric("عدد الألواح", f"{panel_count}")
+        r4.metric("البطاريات", f"{battery_capacity} Ah")
+
+        st.success(f"💰 السعر التقريبي: {estimated_price:,} جنيه")
+
+        data = pd.DataFrame({
+            "Component": ["Inverter", "Panels", "Battery"],
+            "Value": [inverter_size, panel_count, battery_capacity]
+        })
+        fig = px.bar(data, x="Component", y="Value", title="System Components")
+        st.plotly_chart(fig, use_container_width=True)
+
+        if st.button("حفظ الحسابات"):
+            try:
+                db.collection("solar_calculations").add({
+                    "user": username,
+                    "power": power,
+                    "hours": hours,
+                    "daily_energy": daily_energy,
+                    "inverter": inverter_size,
+                    "panels": panel_count,
+                    "battery": battery_capacity,
+                    "timestamp": firestore.SERVER_TIMESTAMP
+                })
+                st.success("تم حفظ البيانات بنجاح")
+            except Exception as e:
+                st.error(e)
+
+    elif page == "شركات التركيب":
+        st.title("🏢 شركات التركيب")
+        companies = [
+            {"name": "شمس أكتوبر", "rating": "⭐ 4.9", "location": "6 أكتوبر"},
+            {"name": "إيجيبت سولار", "rating": "⭐ 4.7", "location": "القاهرة"},
+            {"name": "النيل للطاقة", "rating": "⭐ 4.8", "location": "الجيزة"}
+        ]
+        for comp in companies:
+            with st.container(border=True):
+                st.subheader(comp["name"])
+                st.write(comp["rating"])
+                st.write(comp["location"])
+                st.button(f"طلب تركيب - {comp['name']}")
+
+    elif page == "خطط المتابعة":
+        st.title("📡 خطط المتابعة والصيانة")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Basic")
+            st.write("✔ تنبيهات أعطال")
+            st.write("✔ متابعة الإنتاج")
+            st.write("✔ تقارير شهرية")
+            st.button("اشترك الآن")
+        with col2:
+            st.subheader("Premium")
+            st.write("✔ زيارات صيانة")
+            st.write("✔ دعم 24/7")
+            st.write("✔ متابعة مباشرة")
+            st.button("اشترك Premium")
+
+    elif page == "تواصل معنا":
+        st.title("📞 تواصل معنا")
+        with st.form("contact_form"):
+            name_input = st.text_input("الاسم")
+            email = st.text_input("البريد الإلكتروني")
+            message = st.text_area("رسالتك")
+            submit = st.form_submit_button("إرسال")
+            if submit:
+                try:
+                    db.collection("messages").add({
+                        "name": name_input, "email": email, "message": message,
+                        "timestamp": firestore.SERVER_TIMESTAMP
+                    })
+                    st.success("تم إرسال الرسالة بنجاح")
+                except Exception as e:
+                    st.error(e)
+
+    elif page == "إنشاء حساب":
+        st.title("📝 إنشاء حساب جديد")
+        with st.form("register_form"):
+            new_username = st.text_input("اسم المستخدم")
+            new_email = st.text_input("البريد الإلكتروني")
+            new_password = st.text_input("كلمة المرور", type="password")
+            submit_register = st.form_submit_button("إنشاء الحساب")
+
+            if submit_register:
+                try:
+                    users_ref = db.collection("users")
+                    query = users_ref.where("username", "==", new_username).stream()
+                    if any(query):
+                        st.error("اسم المستخدم موجود بالفعل")
+                    else:
+                        users_ref.add({
+                            "username": new_username,
+                            "email": new_email,
+                            "password": new_password,
+                            "timestamp": firestore.SERVER_TIMESTAMP
+                        })
+                        st.success("تم إنشاء الحساب بنجاح 🔥")
+                except Exception as e:
+                    st.error(e)
+
     st.markdown("---")
-    page = st.radio(L['menu'], [L['home'], L['calc'], L['comp'], L['plans'], L['contact'], L['reg']])
-
-# --- PAGES CONTENT ---
-if page == L['home']:
-    st.title(f"🏠 {L['home']}")
-    st.subheader("VPC Solar Ecosystem")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.info("Residential Systems / الأنظمة السكنية")
-        st.button("Explore Residential")
-    with col2:
-        st.success("Agricultural Systems / الأنظمة الزراعية")
-        st.button("Explore Agricultural")
-
-elif page == L['calc']:
-    st.title(f"⚡ {L['calc']}")
-    col1, col2 = st.columns(2)
-    with col1:
-        load = st.number_input("Total Load (Watts) / الأحمال", 100, 50000, 1000)
-        h = st.number_input("Operating Hours / ساعات التشغيل", 1, 24, 5)
-    with col2:
-        v = st.selectbox("System Voltage / جهد النظام", [12, 24, 48])
-    
-    if st.button("Calculate / احسب الآن"):
-        daily = load * h
-        panels = round(daily / 400)
-        st.divider()
-        st.subheader(L['sys_results'])
-        c1, c2 = st.columns(2)
-        c1.metric("Daily Energy", f"{daily} Wh")
-        c2.metric("Approx. Panels (400W)", f"{panels}")
-
-elif page == L['comp']:
-    st.title(f"🏢 {L['comp']}")
-    st.write("Current verified companies in 6th of October City:")
-    st.table(pd.DataFrame({
-        "Company": ["Shams October", "VPC Partners", "Egypt Solar"],
-        "Location": ["Industrial Zone", "Degla Palms", "Smart Village"],
-        "Rating": ["5/5", "4.8/5", "4.5/5"]
-    }))
-
-elif page == L['plans']:
-    st.title(f"📡 {L['plans']}")
-    st.warning("IoT Monitoring is coming soon to your dashboard.")
-
-elif page == L['contact']:
-    st.title(f"📞 {L['contact']}")
-    with st.form("c_form"):
-        st.text_input("Name")
-        st.text_area("Message")
-        st.form_submit_button("Send")
-
-elif page == L['reg']:
-    st.title(f"📝 {L['reg']}")
-    with st.form("reg_form"):
-        u = st.text_input("New Username")
-        p = st.text_input("New Password", type="password")
-        if st.form_submit_button("Register"):
-            db.collection("users").add({"username": u, "password": p})
-            st.success("Account Created!")
-
-st.markdown("---")
-st.caption("VPC Solar Pro © 2026")
+    st.caption("VPC Solar © 2026")
