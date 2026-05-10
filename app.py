@@ -4,185 +4,249 @@ import pandas as pd
 import plotly.express as px
 from google.oauth2 import service_account
 from google.cloud import firestore
-import firebase_admin
-from firebase_admin import auth, credentials
 from PIL import Image
 
-# =========================
-# CONFIG
-# =========================
-st.set_page_config(page_title="VPC Solar SaaS", layout="wide")
+# =========================================
+# PAGE CONFIG
+# =========================================
+st.set_page_config(
+    page_title="VPC Solar",
+    page_icon="☀️",
+    layout="wide"
+)
 
-# =========================
-# FIREBASE INIT
-# =========================
-key_dict = json.loads(st.secrets["textkey"])
-creds = service_account.Credentials.from_service_account_info(key_dict)
-db = firestore.Client(credentials=creds, project=key_dict["project_id"])
+# =========================================
+# FIREBASE CONNECTION
+# =========================================
+try:
+    if "textkey" in st.secrets:
+        key_dict = json.loads(st.secrets["textkey"])
+        creds = service_account.Credentials.from_service_account_info(key_dict)
+        db = firestore.Client(credentials=creds, project=key_dict["project_id"])
+except Exception as e:
+    st.error(f"Firestore Error: {e}")
 
-if not firebase_admin._apps:
-    cred = credentials.Certificate("serviceAccountKey.json")
-    firebase_admin.initialize_app(cred)
-
-# =========================
-# SESSION STATE
-# =========================
+# =========================================
+# 🔐 DYNAMIC LOGIN SYSTEM
+# =========================================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-    st.session_state.user_id = None
-    st.session_state.user_profile = None
 
-# =========================
-# HELPERS
-# =========================
-def get_company_id():
-    return st.session_state.user_profile["company_id"]
-
-def get_role():
-    return st.session_state.user_profile["role"]
-
-# =========================
-# LOGIN
-# =========================
-def login():
-    st.title("🔐 VPC Solar Login")
-
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
+if not st.session_state.logged_in:
+    st.title("🔐 تسجيل الدخول")
+    
+    user_in = st.text_input("اسم المستخدم")
+    pass_in = st.text_input("كلمة المرور", type="password")
 
     if st.button("Login"):
-        try:
-            user = auth.get_user_by_email(email)
+        # الدخول الافتراضي للمطور
+        if user_in == "mohamed" and pass_in == "123456":
+            st.session_state.logged_in = True
+            st.session_state.username = user_in
+            st.rerun()
+        else:
+            try:
+                # التحقق من قاعدة بيانات المستخدمين
+                users_ref = db.collection("users")
+                query = users_ref.where("username", "==", user_in).stream()
+                
+                found = False
+                for doc in query:
+                    user_data = doc.to_dict()
+                    if user_data.get("password") == pass_in:
+                        st.session_state.logged_in = True
+                        st.session_state.username = user_in
+                        found = True
+                        st.rerun()
+                
+                if not found:
+                    st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
+            except Exception as e:
+                st.error(f"خطأ في الاتصال بقاعدة البيانات: {e}")
+    st.stop()
 
-            user_doc = db.collection("users").document(user.uid).get()
+# =========================================
+# MAIN APP (بعد تسجيل الدخول)
+# =========================================
+if st.session_state.logged_in:
+    username = st.session_state.username
 
-            if user_doc.exists:
-                st.session_state.logged_in = True
-                st.session_state.user_id = user.uid
-                st.session_state.user_profile = user_doc.to_dict()
-                st.rerun()
-            else:
-                st.error("User profile not found")
-
-        except Exception:
-            st.error("Invalid login")
-
-# =========================
-# SOLAR ENGINE (PRO VERSION)
-# =========================
-def solar_engine(power, hours, backup_hours, voltage):
-
-    daily_energy = power * hours
-
-    system_efficiency = 0.75
-    ps_hours = 5.5
-
-    required_energy = daily_energy / system_efficiency
-
-    pv_size_kw = required_energy / (ps_hours * 1000)
-
-    inverter_size = power * 1.3
-
-    battery_capacity = (daily_energy * backup_hours) / (voltage * 0.8)
-
-    return {
-        "daily_energy_wh": daily_energy,
-        "pv_size_kw": round(pv_size_kw, 2),
-        "inverter_w": int(inverter_size),
-        "battery_ah": int(battery_capacity)
+    st.markdown("""
+    <style>
+    .main { direction: rtl; text-align: right; }
+    section[data-testid="stSidebar"] { direction: rtl; }
+    .stButton > button {
+        background-color: #00BFFF;
+        color: white;
+        border-radius: 12px;
+        height: 50px;
+        width: 100%;
+        border: none;
+        font-size: 18px;
+        font-weight: bold;
     }
+    .stButton > button:hover { background-color: #0099cc; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# =========================
-# SAVE TO FIRESTORE
-# =========================
-def save_calc(data):
-    db.collection("solar_calculations").add({
-        "company_id": get_company_id(),
-        "user_id": st.session_state.user_id,
-        **data
-    })
+    # تحميل اللوجو
+    try:
+        logo = Image.open("logo.png")
+    except:
+        logo = None
 
-# =========================
-# MAIN APP
-# =========================
-def main_app():
+    # --- SIDEBAR ---
+    with st.sidebar:
+        if logo:
+            st.image(logo, width=180)
+        st.title("☀️ VPC Solar")
+        st.write(f"مرحباً بك: {username}")
 
-    user = st.session_state.user_profile
-    company_id = user["company_id"]
-    role = user["role"]
+        if st.button("تسجيل الخروج"):
+            st.session_state.logged_in = False
+            st.rerun()
 
-    st.sidebar.title("☀️ VPC Solar SaaS")
-    st.sidebar.write(f"Role: {role}")
+        page = st.radio(
+            "القائمة",
+            ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة", "تواصل معنا", "إنشاء حساب"]
+        )
 
-    page = st.sidebar.radio("Menu", [
-        "Dashboard",
-        "Solar Calculator",
-        "Company Data"
-    ])
+    # --- صفحات التطبيق ---
+    if page == "الرئيسية":
+        st.title("☀️ VPC Solar")
+        st.subheader("Smart Solar Solutions")
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("## 🏠 الأنظمة السكنية")
+            st.write("حلول متكاملة لتشغيل المنازل بالطاقة الشمسية.")
+            st.button("استكشف الأنظمة السكنية")
+        with col2:
+            st.markdown("## 🚜 الأنظمة الزراعية")
+            st.write("أنظمة ري وطلمبات تعمل بالطاقة الشمسية.")
+            st.button("استكشف الأنظمة الزراعية")
 
-    # ================= DASHBOARD =================
-    if page == "Dashboard":
-        st.title("📊 Dashboard")
+    elif page == "حاسبة الطاقة الشمسية":
+        st.title("⚡ حاسبة الطاقة الشمسية")
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            power = st.number_input("إجمالي الأحمال (وات)", min_value=100, value=1000)
+            hours = st.number_input("عدد ساعات التشغيل", min_value=1, value=5)
+        with col2:
+            voltage = st.selectbox("جهد النظام", [12, 24, 48])
+            battery_backup = st.slider("عدد ساعات البطارية الاحتياطية", 1, 24, 5)
 
-        docs = db.collection("solar_calculations") \
-            .where("company_id", "==", company_id).stream()
+        daily_energy = power * hours
+        inverter_size = int(power * 1.25)
+        panel_count = max(1, round(daily_energy / (400 * 5)))
+        battery_capacity = int((daily_energy * battery_backup) / (voltage * 0.8))
+        estimated_price = (panel_count * 5000 + inverter_size * 2)
 
-        data = [d.to_dict() for d in docs]
+        st.markdown("---")
+        st.subheader("📊 النتائج")
+        r1, r2, r3, r4 = st.columns(4)
+        r1.metric("الاستهلاك اليومي", f"{daily_energy} Wh")
+        r2.metric("قدرة الإنفرتر", f"{inverter_size} W")
+        r3.metric("عدد الألواح", f"{panel_count}")
+        r4.metric("البطاريات", f"{battery_capacity} Ah")
 
-        st.metric("Total Calculations", len(data))
+        st.success(f"💰 السعر التقريبي: {estimated_price:,} جنيه")
 
-        if data:
-            df = pd.DataFrame(data)
-            st.dataframe(df)
+        data = pd.DataFrame({
+            "Component": ["Inverter", "Panels", "Battery"],
+            "Value": [inverter_size, panel_count, battery_capacity]
+        })
+        fig = px.bar(data, x="Component", y="Value", title="System Components")
+        st.plotly_chart(fig, use_container_width=True)
 
-    # ================= CALCULATOR =================
-    elif page == "Solar Calculator":
-        st.title("⚡ Solar Sizing Engine")
+        if st.button("حفظ الحسابات"):
+            try:
+                db.collection("solar_calculations").add({
+                    "user": username,
+                    "power": power,
+                    "hours": hours,
+                    "daily_energy": daily_energy,
+                    "inverter": inverter_size,
+                    "panels": panel_count,
+                    "battery": battery_capacity,
+                    "timestamp": firestore.SERVER_TIMESTAMP
+                })
+                st.success("تم حفظ البيانات بنجاح")
+            except Exception as e:
+                st.error(e)
 
-        power = st.number_input("Load (W)", 100, 10000, 1000)
-        hours = st.number_input("Usage Hours", 1, 24, 5)
-        backup = st.slider("Backup Hours", 1, 24, 5)
-        voltage = st.selectbox("System Voltage", [12, 24, 48])
+    elif page == "شركات التركيب":
+        st.title("🏢 شركات التركيب")
+        companies = [
+            {"name": "شمس أكتوبر", "rating": "⭐ 4.9", "location": "6 أكتوبر"},
+            {"name": "إيجيبت سولار", "rating": "⭐ 4.7", "location": "القاهرة"},
+            {"name": "النيل للطاقة", "rating": "⭐ 4.8", "location": "الجيزة"}
+        ]
+        for comp in companies:
+            with st.container(border=True):
+                st.subheader(comp["name"])
+                st.write(comp["rating"])
+                st.write(comp["location"])
+                st.button(f"طلب تركيب - {comp['name']}")
 
-        if st.button("Calculate System"):
+    elif page == "خطط المتابعة":
+        st.title("📡 خطط المتابعة والصيانة")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Basic")
+            st.write("✔ تنبيهات أعطال")
+            st.write("✔ متابعة الإنتاج")
+            st.write("✔ تقارير شهرية")
+            st.button("اشترك الآن")
+        with col2:
+            st.subheader("Premium")
+            st.write("✔ زيارات صيانة")
+            st.write("✔ دعم 24/7")
+            st.write("✔ متابعة مباشرة")
+            st.button("اشترك Premium")
 
-            result = solar_engine(power, hours, backup, voltage)
+    elif page == "تواصل معنا":
+        st.title("📞 تواصل معنا")
+        with st.form("contact_form"):
+            name_input = st.text_input("الاسم")
+            email = st.text_input("البريد الإلكتروني")
+            message = st.text_area("رسالتك")
+            submit = st.form_submit_button("إرسال")
+            if submit:
+                try:
+                    db.collection("messages").add({
+                        "name": name_input, "email": email, "message": message,
+                        "timestamp": firestore.SERVER_TIMESTAMP
+                    })
+                    st.success("تم إرسال الرسالة بنجاح")
+                except Exception as e:
+                    st.error(e)
 
-            st.success("System Calculated Successfully")
+    elif page == "إنشاء حساب":
+        st.title("📝 إنشاء حساب جديد")
+        with st.form("register_form"):
+            new_username = st.text_input("اسم المستخدم")
+            new_email = st.text_input("البريد الإلكتروني")
+            new_password = st.text_input("كلمة المرور", type="password")
+            submit_register = st.form_submit_button("إنشاء الحساب")
 
-            st.write(result)
+            if submit_register:
+                try:
+                    users_ref = db.collection("users")
+                    query = users_ref.where("username", "==", new_username).stream()
+                    if any(query):
+                        st.error("اسم المستخدم موجود بالفعل")
+                    else:
+                        users_ref.add({
+                            "username": new_username,
+                            "email": new_email,
+                            "password": new_password,
+                            "timestamp": firestore.SERVER_TIMESTAMP
+                        })
+                        st.success("تم إنشاء الحساب بنجاح 🔥")
+                except Exception as e:
+                    st.error(e)
 
-            df = pd.DataFrame({
-                "Component": ["PV Size (kW)", "Inverter (W)", "Battery (Ah)"],
-                "Value": [result["pv_size_kw"], result["inverter_w"], result["battery_ah"]]
-            })
-
-            fig = px.bar(df, x="Component", y="Value", title="System Design")
-            st.plotly_chart(fig, use_container_width=True)
-
-            save_calc(result)
-
-    # ================= COMPANY DATA =================
-    elif page == "Company Data":
-
-        st.title("🏢 Company Management")
-
-        if role != "owner":
-            st.error("Access denied")
-            return
-
-        users = db.collection("users") \
-            .where("company_id", "==", company_id).stream()
-
-        users_data = [u.to_dict() for u in users]
-
-        st.write("Team Members")
-        st.dataframe(pd.DataFrame(users_data))
-
-# =========================
-# ROUTER
-# =========================
-if not st.session_state.logged_in:
-    login()
-else:
-    main_app()
+    st.markdown("---")
+    st.caption("VPC Solar © 2026")
