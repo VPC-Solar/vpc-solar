@@ -7,16 +7,12 @@ from google.cloud import firestore
 from PIL import Image
 
 # =========================================
-# PAGE CONFIG
+# 1. CONFIG & SETTINGS
 # =========================================
-st.set_page_config(
-    page_title="VPC Solar",
-    page_icon="☀️",
-    layout="wide"
-)
+st.set_page_config(page_title="VPC Solar", page_icon="☀️", layout="wide")
 
 # =========================================
-# FIREBASE CONNECTION
+# 2. FIREBASE CONNECTION
 # =========================================
 try:
     if "textkey" in st.secrets:
@@ -27,62 +23,41 @@ except Exception as e:
     st.error(f"Firestore Error: {e}")
 
 # =========================================
-# 🌐 LANGUAGE DICTIONARY (قاموس اللغات)
+# 3. 🌐 MULTI-LANGUAGE DICTIONARY
 # =========================================
 texts = {
     'ar': {
-        'welcome': "مرحباً بك",
-        'logout': "تسجيل الخروج",
-        'menu': "القائمة",
-        'home': "الرئيسية",
-        'calc': "حاسبة الطاقة الشمسية",
-        'comp': "شركات التركيب",
-        'plans': "خطط المتابعة",
-        'contact': "تواصل معنا",
-        'reg': "إنشاء حساب",
-        'login_title': "🔐 تسجيل الدخول",
-        'user_label': "اسم المستخدم",
-        'pass_label': "كلمة المرور",
-        'login_btn': "دخول",
-        'error_msg': "اسم المستخدم أو كلمة المرور غير صحيحة"
+        'welcome': "مرحباً بك", 'logout': "خروج", 'menu': "القائمة",
+        'home': "الرئيسية", 'calc': "حاسبة الطاقة الشمسية", 'comp': "شركات التركيب",
+        'plans': "خطط المتابعة", 'contact': "تواصل معنا", 'reg': "إنشاء حساب",
+        'login_title': "🔐 تسجيل الدخول", 'user_label': "اسم المستخدم",
+        'pass_label': "كلمة المرور", 'login_btn': "دخول",
+        'error_msg': "اسم المستخدم أو كلمة المرور غير صحيحة",
+        'sys_results': "📊 نتائج النظام المتوقعة"
     },
     'en': {
-        'welcome': "Welcome",
-        'logout': "Logout",
-        'menu': "Menu",
-        'home': "Home",
-        'calc': "Solar Calculator",
-        'comp': "Installers",
-        'plans': "Monitoring Plans",
-        'contact': "Contact Us",
-        'reg': "Register",
-        'login_title': "🔐 Login",
-        'user_label': "Username",
-        'pass_label': "Password",
-        'login_btn': "Login",
-        'error_msg': "Invalid username or password"
+        'welcome': "Welcome", 'logout': "Logout", 'menu': "Menu",
+        'home': "Home", 'calc': "Solar Calculator", 'comp': "Installers",
+        'plans': "Monitoring Plans", 'contact': "Contact Us", 'reg': "Register",
+        'login_title': "🔐 Login", 'user_label': "Username",
+        'pass_label': "Password", 'login_btn': "Login",
+        'error_msg': "Invalid username or password",
+        'sys_results': "📊 Expected System Results"
     }
 }
 
-# تهيئة اللغة الافتراضية (عربي)
-if 'lang' not in st.session_state:
-    st.session_state.lang = 'ar'
-
-# اختصار للوصول للنصوص بسهولة
+if 'lang' not in st.session_state: st.session_state.lang = 'ar'
 L = texts[st.session_state.lang]
 
 # =========================================
-# 🔐 DYNAMIC LOGIN SYSTEM
+# 4. 🔐 DYNAMIC LOGIN SYSTEM
 # =========================================
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+if "logged_in" not in st.session_state: st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
     st.title(L['login_title'])
-    
     user_in = st.text_input(L['user_label'])
     pass_in = st.text_input(L['pass_label'], type="password")
-
     if st.button(L['login_btn']):
         if user_in == "mohamed" and pass_in == "123456":
             st.session_state.logged_in = True
@@ -94,65 +69,103 @@ if not st.session_state.logged_in:
                 query = users_ref.where("username", "==", user_in).stream()
                 found = False
                 for doc in query:
-                    user_data = doc.to_dict()
-                    if user_data.get("password") == pass_in:
+                    if doc.to_dict().get("password") == pass_in:
                         st.session_state.logged_in = True
                         st.session_state.username = user_in
                         found = True
                         st.rerun()
-                if not found:
-                    st.error(L['error_msg'])
-            except Exception as e:
-                st.error(f"Error: {e}")
+                if not found: st.error(L['error_msg'])
+            except: st.error("Database Connection Error")
     st.stop()
 
 # =========================================
-# MAIN APP (بعد تسجيل الدخول)
+# 5. MAIN APP UI (After Login)
 # =========================================
-if st.session_state.logged_in:
-    username = st.session_state.username
+username = st.session_state.username
+direction = "rtl" if st.session_state.lang == 'ar' else "ltr"
 
-    # ضبط التنسيق بناءً على اللغة (RTL للعربي و LTR للإنجليزي)
-    direction = "rtl" if st.session_state.lang == 'ar' else "ltr"
-    st.markdown(f"""
-    <style>
+st.markdown(f"""
+<style>
     .main {{ direction: {direction}; text-align: {"right" if direction=="rtl" else "left"}; }}
     section[data-testid="stSidebar"] {{ direction: {direction}; }}
-    .stButton > button {{
-        background-color: #00BFFF;
-        color: white;
-        border-radius: 12px;
-        font-weight: bold;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
+    .stButton > button {{ background-color: #00BFFF; color: white; border-radius: 10px; width: 100%; }}
+</style>
+""", unsafe_allow_html=True)
 
-    try:
-        logo = Image.open("logo.png")
-    except:
-        logo = None
+# --- SIDEBAR ---
+with st.sidebar:
+    st.title("☀️ VPC Solar")
+    st.write(f"{L['welcome']}: {username}")
+    
+    # تبديل اللغة
+    lang_choice = st.selectbox("Language / اللغة", ["العربية", "English"], index=0 if st.session_state.lang == 'ar' else 1)
+    st.session_state.lang = 'ar' if lang_choice == "العربية" else 'en'
+    
+    if st.button(L['logout']):
+        st.session_state.logged_in = False
+        st.rerun()
+    
+    st.markdown("---")
+    page = st.radio(L['menu'], [L['home'], L['calc'], L['comp'], L['plans'], L['contact'], L['reg']])
 
-    # --- SIDEBAR ---
-    with st.sidebar:
-        if logo:
-            st.image(logo, width=180)
-        st.title("☀️ VPC Solar")
-        st.write(f"{L['welcome']}: {username}")
+# --- PAGES CONTENT ---
+if page == L['home']:
+    st.title(f"🏠 {L['home']}")
+    st.subheader("VPC Solar Ecosystem")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.info("Residential Systems / الأنظمة السكنية")
+        st.button("Explore Residential")
+    with col2:
+        st.success("Agricultural Systems / الأنظمة الزراعية")
+        st.button("Explore Agricultural")
 
-        # زر تغيير اللغة في السايدبار
-        new_lang = st.selectbox("Language / اللغة", ["العربية", "English"], index=0 if st.session_state.lang == 'ar' else 1)
-        st.session_state.lang = 'ar' if new_lang == "العربية" else 'en'
-        
-        if st.button(L['logout']):
-            st.session_state.logged_in = False
-            st.rerun()
+elif page == L['calc']:
+    st.title(f"⚡ {L['calc']}")
+    col1, col2 = st.columns(2)
+    with col1:
+        load = st.number_input("Total Load (Watts) / الأحمال", 100, 50000, 1000)
+        h = st.number_input("Operating Hours / ساعات التشغيل", 1, 24, 5)
+    with col2:
+        v = st.selectbox("System Voltage / جهد النظام", [12, 24, 48])
+    
+    if st.button("Calculate / احسب الآن"):
+        daily = load * h
+        panels = round(daily / 400)
+        st.divider()
+        st.subheader(L['sys_results'])
+        c1, c2 = st.columns(2)
+        c1.metric("Daily Energy", f"{daily} Wh")
+        c2.metric("Approx. Panels (400W)", f"{panels}")
 
-        page = st.radio(
-            L['menu'],
-            [L['home'], L['calc'], L['comp'], L['plans'], L['contact'], L['reg']]
-        )
+elif page == L['comp']:
+    st.title(f"🏢 {L['comp']}")
+    st.write("Current verified companies in 6th of October City:")
+    st.table(pd.DataFrame({
+        "Company": ["Shams October", "VPC Partners", "Egypt Solar"],
+        "Location": ["Industrial Zone", "Degla Palms", "Smart Village"],
+        "Rating": ["5/5", "4.8/5", "4.5/5"]
+    }))
 
-    # --- صفحات التطبيق (مثال لصفحة واحدة والباقي بنفس النمط) ---
-    if page == L['home']:
-        st.title(f"☀️ VPC Solar - {L['home']}")
-        # هنا تكمل باقي محتوى الصفحات باستخدام متغيرات L['...']
+elif page == L['plans']:
+    st.title(f"📡 {L['plans']}")
+    st.warning("IoT Monitoring is coming soon to your dashboard.")
+
+elif page == L['contact']:
+    st.title(f"📞 {L['contact']}")
+    with st.form("c_form"):
+        st.text_input("Name")
+        st.text_area("Message")
+        st.form_submit_button("Send")
+
+elif page == L['reg']:
+    st.title(f"📝 {L['reg']}")
+    with st.form("reg_form"):
+        u = st.text_input("New Username")
+        p = st.text_input("New Password", type="password")
+        if st.form_submit_button("Register"):
+            db.collection("users").add({"username": u, "password": p})
+            st.success("Account Created!")
+
+st.markdown("---")
+st.caption("VPC Solar Pro © 2026")
