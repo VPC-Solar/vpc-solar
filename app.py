@@ -27,72 +27,43 @@ except Exception as e:
     st.error(f"Firestore Error: {e}")
 
 # =========================================
-# 🔐 DYNAMIC LOGIN & REGISTER SYSTEM
+# 🔐 DYNAMIC LOGIN SYSTEM
 # =========================================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+if "page" not in st.session_state:
+    st.session_state.page = "الرئيسية"
 
 if not st.session_state.logged_in:
-    st.title("☀️ مرحباً بك في VPC Solar")
+    st.title("🔐 تسجيل الدخول")
     
-    # إنشاء تبويبات للدخول وإنشاء الحساب في الواجهة الأمامية
-    tab_login, tab_signup = st.tabs(["🔐 تسجيل الدخول", "📝 إنشاء حساب جديد"])
+    user_in = st.text_input("اسم المستخدم")
+    pass_in = st.text_input("كلمة المرور", type="password")
 
-    with tab_login:
-        user_in = st.text_input("اسم المستخدم", key="login_user")
-        pass_in = st.text_input("كلمة المرور", type="password", key="login_pass")
-
-        if st.button("تسجيل الدخول", use_container_width=True):
-            # الدخول الافتراضي للمطور
-            if user_in == "mohamed" and pass_in == "123456":
-                st.session_state.logged_in = True
-                st.session_state.username = user_in
-                st.rerun()
-            else:
-                try:
-                    users_ref = db.collection("users")
-                    query = users_ref.where("username", "==", user_in).stream()
-                    
-                    found = False
-                    for doc in query:
-                        user_data = doc.to_dict()
-                        if user_data.get("password") == pass_in:
-                            st.session_state.logged_in = True
-                            st.session_state.username = user_in
-                            found = True
-                            st.rerun()
-                    
-                    if not found:
-                        st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
-                except Exception as e:
-                    st.error(f"خطأ في الاتصال بقاعدة البيانات: {e}")
-
-    with tab_signup:
-        new_username = st.text_input("اختر اسم مستخدم", key="reg_user")
-        new_email = st.text_input("البريد الإلكتروني", key="reg_email")
-        new_password = st.text_input("اختر كلمة مرور", type="password", key="reg_pass")
-        
-        if st.button("إنشاء الحساب", use_container_width=True):
-            if new_username and new_password:
-                try:
-                    users_ref = db.collection("users")
-                    query = users_ref.where("username", "==", new_username).stream()
-                    if any(query):
-                        st.error("اسم المستخدم موجود بالفعل")
-                    else:
-                        users_ref.add({
-                            "username": new_username,
-                            "email": new_email,
-                            "password": new_password,
-                            "timestamp": firestore.SERVER_TIMESTAMP
-                        })
-                        st.success("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول من التبويب الآخر.")
-                except Exception as e:
-                    st.error(f"حدث خطأ أثناء التسجيل: {e}")
-            else:
-                st.warning("يرجى إدخال اسم المستخدم وكلمة المرور")
-    
-    st.stop() # إيقاف التنفيذ هنا حتى يتم تسجيل الدخول
+    if st.button("Login"):
+        if user_in == "mohamed" and pass_in == "123456":
+            st.session_state.logged_in = True
+            st.session_state.username = user_in
+            st.rerun()
+        else:
+            try:
+                users_ref = db.collection("users")
+                query = users_ref.where("username", "==", user_in).stream()
+                
+                found = False
+                for doc in query:
+                    user_data = doc.to_dict()
+                    if user_data.get("password") == pass_in:
+                        st.session_state.logged_in = True
+                        st.session_state.username = user_in
+                        found = True
+                        st.rerun()
+                
+                if not found:
+                    st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
+            except Exception as e:
+                st.error(f"خطأ في الاتصال بقاعدة البيانات: {e}")
+    st.stop()
 
 # =========================================
 # MAIN APP (بعد تسجيل الدخول)
@@ -100,21 +71,36 @@ if not st.session_state.logged_in:
 if st.session_state.logged_in:
     username = st.session_state.username
 
+    # تحسين الـ CSS لإلغاء الدوائر وتنسيق القائمة
     st.markdown("""
     <style>
     .main { direction: rtl; text-align: right; }
-    section[data-testid="stSidebar"] { direction: rtl; }
+    [data-testid="stSidebar"] { direction: rtl; }
+    
+    /* تنسيق أزرار القائمة الجانبية لتظهر ككلمات فقط */
+    div[data-testid="stVerticalBlock"] > div > button {
+        border: none !important;
+        background-color: transparent !important;
+        color: white !important;
+        text-align: right !important;
+        display: block !important;
+        width: 100% !important;
+        padding: 10px 0px !important;
+        font-size: 18px !important;
+        transition: 0.3s;
+    }
+    div[data-testid="stVerticalBlock"] > div > button:hover {
+        color: #00BFFF !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+    
+    /* تنسيق زر تسجيل الخروج ليكون مميزاً */
     .stButton > button {
         background-color: #00BFFF;
         color: white;
         border-radius: 12px;
-        height: 50px;
-        width: 100%;
-        border: none;
-        font-size: 18px;
         font-weight: bold;
     }
-    .stButton > button:hover { background-color: #0099cc; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -124,22 +110,42 @@ if st.session_state.logged_in:
     except:
         logo = None
 
-    # --- SIDEBAR ---
+    # --- SIDEBAR (التعديل هنا) ---
     with st.sidebar:
         if logo:
             st.image(logo, width=180)
         st.title("☀️ VPC Solar")
-        st.write(f"مرحباً بك: {username}")
+        st.write(f"مرحباً بك: **{username}**")
 
-        if st.button("تسجيل الخروج"):
+        if st.button("🚪 تسجيل الخروج"):
             st.session_state.logged_in = False
             st.rerun()
 
-        # تم حذف "إنشاء حساب" من هنا لأنها أصبحت في البداية
-        page = st.radio(
-            "القائمة",
-            ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة", "تواصل معنا"]
-        )
+        st.markdown("---")
+        st.markdown("### 📋 القائمة")
+        
+        # إنشاء الأزرار بدل الـ Radio
+        if st.button("🏠 الرئيسية"):
+            st.session_state.page = "الرئيسية"
+            st.rerun()
+        if st.button("⚡ حاسبة الطاقة الشمسية"):
+            st.session_state.page = "حاسبة الطاقة الشمسية"
+            st.rerun()
+        if st.button("🏢 شركات التركيب"):
+            st.session_state.page = "شركات التركيب"
+            st.rerun()
+        if st.button("📡 خطط المتابعة"):
+            st.session_state.page = "خطط المتابعة"
+            st.rerun()
+        if st.button("📞 تواصل معنا"):
+            st.session_state.page = "تواصل معنا"
+            st.rerun()
+        if st.button("📝 إنشاء حساب"):
+            st.session_state.page = "إنشاء حساب"
+            st.rerun()
+
+    # تحديد الصفحة الحالية
+    page = st.session_state.page
 
     # --- صفحات التطبيق ---
     if page == "الرئيسية":
@@ -250,6 +256,31 @@ if st.session_state.logged_in:
                         "timestamp": firestore.SERVER_TIMESTAMP
                     })
                     st.success("تم إرسال الرسالة بنجاح")
+                except Exception as e:
+                    st.error(e)
+
+    elif page == "إنشاء حساب":
+        st.title("📝 إنشاء حساب جديد")
+        with st.form("register_form"):
+            new_username = st.text_input("اسم المستخدم")
+            new_email = st.text_input("البريد الإلكتروني")
+            new_password = st.text_input("كلمة المرور", type="password")
+            submit_register = st.form_submit_button("إنشاء الحساب")
+
+            if submit_register:
+                try:
+                    users_ref = db.collection("users")
+                    query = users_ref.where("username", "==", new_username).stream()
+                    if any(query):
+                        st.error("اسم المستخدم موجود بالفعل")
+                    else:
+                        users_ref.add({
+                            "username": new_username,
+                            "email": new_email,
+                            "password": new_password,
+                            "timestamp": firestore.SERVER_TIMESTAMP
+                        })
+                        st.success("تم إنشاء الحساب بنجاح 🔥")
                 except Exception as e:
                     st.error(e)
 
