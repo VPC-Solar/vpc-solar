@@ -137,7 +137,7 @@ if st.session_state.logged_in:
 
         # تم حذف "إنشاء حساب" من هنا لأنها أصبحت في البداية
         page = st.sidebar.selectbox(
-            "☰القائمة",
+            "☰ القائمة",
             ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة"]
         )
 
@@ -254,4 +254,4 @@ if st.session_state.logged_in:
                     st.error(e)
 
     st.markdown("---")
-    st.caption("VPC Solar © 2026 |📞 تواصل معنا")
+    st.caption("VPC Solar © 2026" |"📞 تواصل معنا")
