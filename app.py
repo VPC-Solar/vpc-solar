@@ -132,7 +132,7 @@ if st.session_state.logged_in:
             st.rerun()
 
         # ربط القائمة بـ current_page
-        pages_list = ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة", "تواصل معنا"]
+        pages_list = ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة"]
         # التأكد من أن الصفحة الحالية موجودة في القائمة
         current_idx = pages_list.index(st.session_state.current_page) if st.session_state.current_page in pages_list else 0
         
