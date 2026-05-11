@@ -254,16 +254,15 @@ if st.session_state.logged_in:
                     st.error(e)
 
     st.markdown("---")
+    
+    col1, col2 = st.columns([1, 8])
+    
+    with col1:
+        # عند الضغط على الزرار، يتم تغيير الصفحة في الـ session_state وإعادة التشغيل
+        if st.button("📞 تواصل معنا"):
+            st.session_state.current_page = "تواصل معنا"
+            st.rerun()
 
-col1, col2 = st.columns([2,8])
-
-with col1:
-    st.caption("VPC Solar © 2026")
-
-with col2:
-    if st.button("📞 تواصل معنا"):
-
-        st.info("""
-        "تواصل معنا"
-        """)
+    with col2:
+        st.caption("VPC Solar © 2026")
         
