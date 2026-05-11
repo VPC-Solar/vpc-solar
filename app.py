@@ -255,7 +255,7 @@ if st.session_state.logged_in:
 
     st.markdown("---")
 
-col1, col2 = st.columns([1,2])
+col1, col2 = st.columns([0,2])
 
 with col1:
     st.caption("VPC Solar © 2026")
