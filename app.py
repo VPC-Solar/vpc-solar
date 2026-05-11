@@ -261,7 +261,7 @@ with col1:
     st.caption("VPC Solar © 2026")
 
 with col2:
-    if st.pills("📞 تواصل معنا"):
+    if st.link_button("📞 تواصل معنا"):
 
         st.info("""
         📧 Email: vpcsolar@gmail.com
