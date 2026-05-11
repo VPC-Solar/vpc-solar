@@ -105,7 +105,7 @@ if st.session_state.logged_in:
     .main { direction: rtl; text-align: right; }
     section[data-testid="stSidebar"] { direction: rtl; }
     .stButton > button {
-        background-color: #00BFFF;
+        background-color: transparent;
         color: white;
         border-radius: 12px;
         height: 50px;
@@ -255,19 +255,15 @@ if st.session_state.logged_in:
 
     st.markdown("---")
 
-col1, col2 = st.columns([5,1])
+col1, col2 = st.columns([3,1])
 
 with col1:
     st.caption("VPC Solar © 2026")
 
 with col2:
-    if st.checkbox("📞 تواصل معنا"):
+    if st.button("📞 تواصل معنا"):
 
         st.info("""
-        📧 Email: vpcsolar@gmail.com
-        
-        📱 Phone: +20 1014638698
-        
-        📍 Egypt - 6 October
+        "تواصل معنا"
         """)
         
