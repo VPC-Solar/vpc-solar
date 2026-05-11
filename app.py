@@ -254,4 +254,20 @@ if st.session_state.logged_in:
                     st.error(e)
 
     st.markdown("---")
+
+col1, col2 = st.columns([5,1])
+
+with col1:
     st.caption("VPC Solar © 2026")
+
+with col2:
+    if st.button("📞 تواصل معنا"):
+
+        st.info("""
+        📧 Email: vpcsolar@gmail.com
+        
+        📱 Phone: +20 1014638698
+        
+        📍 Egypt - 6 October
+        """)
+        
