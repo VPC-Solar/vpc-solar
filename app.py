@@ -199,16 +199,20 @@ if st.session_state.logged_in:
                 st.write(comp["location"])
                 st.button(f"طلب تركيب - {comp['name']}")
 
-    elif st.session_state.current_page == "خطط المتابعة":
+    elif page == "خطط المتابعة":
         st.title("📡 خطط المتابعة والصيانة")
         col1, col2 = st.columns(2)
         with col1:
             st.subheader("Basic")
             st.write("✔ تنبيهات أعطال")
+            st.write("✔ متابعة الإنتاج")
+            st.write("✔ تقارير شهرية")
             st.button("اشترك الآن")
         with col2:
             st.subheader("Premium")
+            st.write("✔ زيارات صيانة")
             st.write("✔ دعم 24/7")
+            st.write("✔ متابعة مباشرة")
             st.button("اشترك Premium")
 
     elif st.session_state.current_page == "تواصل معنا":
