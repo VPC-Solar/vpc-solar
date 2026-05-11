@@ -199,7 +199,7 @@ if st.session_state.logged_in:
                 st.write(comp["location"])
                 st.button(f"طلب تركيب - {comp['name']}")
 
-    elif page == "خطط المتابعة":
+    elif st.session_state.current_page == "خطط المتابعة":
         st.title("📡 خطط المتابعة والصيانة")
         col1, col2 = st.columns(2)
         with col1:
