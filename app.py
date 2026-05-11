@@ -254,4 +254,4 @@ if st.session_state.logged_in:
                     st.error(e)
 
     st.markdown("---")
-    st.caption("VPC Solar © 2026" |"📞 تواصل معنا")
+    st.caption("VPC Solar © 2026")
