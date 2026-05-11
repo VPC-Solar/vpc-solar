@@ -31,11 +31,12 @@ except Exception as e:
 # =========================================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "الرئيسية"
 
 if not st.session_state.logged_in:
     st.title("☀️ مرحباً بك في VPC Solar")
     
-    # إنشاء تبويبات للدخول وإنشاء الحساب في الواجهة الأمامية
     tab_login, tab_signup = st.tabs(["🔐 تسجيل الدخول", "📝 إنشاء حساب جديد"])
 
     with tab_login:
@@ -43,7 +44,6 @@ if not st.session_state.logged_in:
         pass_in = st.text_input("كلمة المرور", type="password", key="login_pass")
 
         if st.button("تسجيل الدخول", use_container_width=True):
-            # الدخول الافتراضي للمطور
             if user_in == "mohamed" and pass_in == "123456":
                 st.session_state.logged_in = True
                 st.session_state.username = user_in
@@ -52,7 +52,6 @@ if not st.session_state.logged_in:
                 try:
                     users_ref = db.collection("users")
                     query = users_ref.where("username", "==", user_in).stream()
-                    
                     found = False
                     for doc in query:
                         user_data = doc.to_dict()
@@ -61,7 +60,6 @@ if not st.session_state.logged_in:
                             st.session_state.username = user_in
                             found = True
                             st.rerun()
-                    
                     if not found:
                         st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
                 except Exception as e:
@@ -86,13 +84,12 @@ if not st.session_state.logged_in:
                             "password": new_password,
                             "timestamp": firestore.SERVER_TIMESTAMP
                         })
-                        st.success("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول من التبويب الآخر.")
+                        st.success("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.")
                 except Exception as e:
                     st.error(f"حدث خطأ أثناء التسجيل: {e}")
             else:
                 st.warning("يرجى إدخال اسم المستخدم وكلمة المرور")
-    
-    st.stop() # إيقاف التنفيذ هنا حتى يتم تسجيل الدخول
+    st.stop()
 
 # =========================================
 # MAIN APP (بعد تسجيل الدخول)
@@ -110,15 +107,14 @@ if st.session_state.logged_in:
         border-radius: 12px;
         height: 50px;
         width: 100%;
-        border: none;
+        border: 1px solid #00BFFF;
         font-size: 18px;
         font-weight: bold;
     }
-    .stButton > button:hover { background-color: #0099cc; }
+    .stButton > button:hover { background-color: #0099cc; color: white; }
     </style>
     """, unsafe_allow_html=True)
 
-    # تحميل اللوجو
     try:
         logo = Image.open("logo.png")
     except:
@@ -135,14 +131,20 @@ if st.session_state.logged_in:
             st.session_state.logged_in = False
             st.rerun()
 
-        # تم حذف "إنشاء حساب" من هنا لأنها أصبحت في البداية
+        # ربط القائمة بـ current_page
+        pages_list = ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة", "تواصل معنا"]
+        # التأكد من أن الصفحة الحالية موجودة في القائمة
+        current_idx = pages_list.index(st.session_state.current_page) if st.session_state.current_page in pages_list else 0
+        
         page = st.selectbox(
             "☰ القائمة",
-            ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة"]
+            pages_list,
+            index=current_idx
         )
+        st.session_state.current_page = page
 
     # --- صفحات التطبيق ---
-    if page == "الرئيسية":
+    if st.session_state.current_page == "الرئيسية":
         st.title("☀️ VPC Solar")
         st.subheader("Smart Solar Solutions")
         st.markdown("---")
@@ -156,7 +158,7 @@ if st.session_state.logged_in:
             st.write("أنظمة ري وطلمبات تعمل بالطاقة الشمسية.")
             st.button("استكشف الأنظمة الزراعية")
 
-    elif page == "حاسبة الطاقة الشمسية":
+    elif st.session_state.current_page == "حاسبة الطاقة الشمسية":
         st.title("⚡ حاسبة الطاقة الشمسية")
         st.markdown("---")
         col1, col2 = st.columns(2)
@@ -183,30 +185,7 @@ if st.session_state.logged_in:
 
         st.success(f"💰 السعر التقريبي: {estimated_price:,} جنيه")
 
-        data = pd.DataFrame({
-            "Component": ["Inverter", "Panels", "Battery"],
-            "Value": [inverter_size, panel_count, battery_capacity]
-        })
-        fig = px.bar(data, x="Component", y="Value", title="System Components")
-        st.plotly_chart(fig, use_container_width=True)
-
-        if st.button("حفظ الحسابات"):
-            try:
-                db.collection("solar_calculations").add({
-                    "user": username,
-                    "power": power,
-                    "hours": hours,
-                    "daily_energy": daily_energy,
-                    "inverter": inverter_size,
-                    "panels": panel_count,
-                    "battery": battery_capacity,
-                    "timestamp": firestore.SERVER_TIMESTAMP
-                })
-                st.success("تم حفظ البيانات بنجاح")
-            except Exception as e:
-                st.error(e)
-
-    elif page == "شركات التركيب":
+    elif st.session_state.current_page == "شركات التركيب":
         st.title("🏢 شركات التركيب")
         companies = [
             {"name": "شمس أكتوبر", "rating": "⭐ 4.9", "location": "6 أكتوبر"},
@@ -220,23 +199,19 @@ if st.session_state.logged_in:
                 st.write(comp["location"])
                 st.button(f"طلب تركيب - {comp['name']}")
 
-    elif page == "خطط المتابعة":
+    elif st.session_state.current_page == "خطط المتابعة":
         st.title("📡 خطط المتابعة والصيانة")
         col1, col2 = st.columns(2)
         with col1:
             st.subheader("Basic")
             st.write("✔ تنبيهات أعطال")
-            st.write("✔ متابعة الإنتاج")
-            st.write("✔ تقارير شهرية")
             st.button("اشترك الآن")
         with col2:
             st.subheader("Premium")
-            st.write("✔ زيارات صيانة")
             st.write("✔ دعم 24/7")
-            st.write("✔ متابعة مباشرة")
             st.button("اشترك Premium")
 
-    elif page == "تواصل معنا":
+    elif st.session_state.current_page == "تواصل معنا":
         st.title("📞 تواصل معنا")
         with st.form("contact_form"):
             name_input = st.text_input("الاسم")
@@ -253,16 +228,12 @@ if st.session_state.logged_in:
                 except Exception as e:
                     st.error(e)
 
+    # --- Footer ---
     st.markdown("---")
-    
-    col1, col2 = st.columns([1, 4])
-    
-    with col1:
-        # عند الضغط على الزرار، يتم تغيير الصفحة في الـ session_state وإعادة التشغيل
-        if st.button("📞 تواصل معنا"):
+    col_btn, col_txt = st.columns([1, 8])
+    with col_btn:
+        if st.button("📞 تواصل معنا", key="footer_contact_btn"):
             st.session_state.current_page = "تواصل معنا"
             st.rerun()
-
-    with col2:
+    with col_txt:
         st.caption("VPC Solar © 2026")
-        
