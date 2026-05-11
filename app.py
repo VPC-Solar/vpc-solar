@@ -47,6 +47,7 @@ if not st.session_state.logged_in:
             if user_in == "mohamed" and pass_in == "123456":
                 st.session_state.logged_in = True
                 st.session_state.username = user_in
+                st.session_state.user_role = "Admin"
                 st.rerun()
             else:
                 try:
@@ -58,6 +59,7 @@ if not st.session_state.logged_in:
                         if user_data.get("password") == pass_in:
                             st.session_state.logged_in = True
                             st.session_state.username = user_in
+                            st.session_state.user_role = user_data.get("role", "عميل") 
                             found = True
                             st.rerun()
                     if not found:
@@ -70,25 +72,34 @@ if not st.session_state.logged_in:
         new_email = st.text_input("البريد الإلكتروني", key="reg_email")
         new_password = st.text_input("اختر كلمة مرور", type="password", key="reg_pass")
         
+        account_type = st.radio("سجل كـ:", ["عميل", "شركة تركيبات"], key="account_role")
+        
+        company_details = {}
+        if account_type == "شركة تركيبات":
+            company_details['location'] = st.selectbox("مقر الشركة الرئيسي", ["6 أكتوبر", "القاهرة", "الجيزة", "الأسكندرية"])
+            company_details['bio'] = st.text_area("نبذة عن خبرات الشركة")
+
         if st.button("إنشاء الحساب", use_container_width=True):
             if new_username and new_password:
                 try:
                     users_ref = db.collection("users")
-                    query = users_ref.where("username", "==", new_username).stream()
-                    if any(query):
+                    if any(users_ref.where("username", "==", new_username).stream()):
                         st.error("اسم المستخدم موجود بالفعل")
                     else:
-                        users_ref.add({
+                        data = {
                             "username": new_username,
                             "email": new_email,
                             "password": new_password,
+                            "role": account_type,
                             "timestamp": firestore.SERVER_TIMESTAMP
-                        })
-                        st.success("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.")
+                        }
+                        if account_type == "شركة تركيبات":
+                            data.update(company_details)
+                        
+                        users_ref.add(data)
+                        st.success(f"تم إنشاء حساب {account_type} بنجاح! سجل دخولك الآن.")
                 except Exception as e:
-                    st.error(f"حدث خطأ أثناء التسجيل: {e}")
-            else:
-                st.warning("يرجى إدخال اسم المستخدم وكلمة المرور")
+                    st.error(f"خطأ: {e}")
     st.stop()
 
 # =========================================
@@ -96,6 +107,7 @@ if not st.session_state.logged_in:
 # =========================================
 if st.session_state.logged_in:
     username = st.session_state.username
+    role = st.session_state.get("user_role", "عميل")
 
     st.markdown("""
     <style>
@@ -120,30 +132,35 @@ if st.session_state.logged_in:
     except:
         logo = None
 
-    # --- SIDEBAR ---
+    # --- SIDEBAR (القائمة الموحدة) ---
     with st.sidebar:
         if logo:
             st.image(logo, width=180)
         st.title("☀️ VPC Solar")
-        st.write(f"مرحباً بك: {username}")
+        st.write(f"مرحباً بك: {username} ({role})")
 
         if st.button("تسجيل الخروج"):
             st.session_state.logged_in = False
             st.rerun()
 
-        # ربط القائمة بـ current_page
-        pages_list = ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة"]
-        # التأكد من أن الصفحة الحالية موجودة في القائمة
-        current_idx = pages_list.index(st.session_state.current_page) if st.session_state.current_page in pages_list else 0
+        # تحديد الصفحات المتاحة حسب نوع الحساب
+        if role == "شركة تركيبات":
+            pages_list = ["الرئيسية", "طلبات التركيب الواردة", "ملف الشركة", "تواصل معنا"]
+        elif role == "Admin":
+            pages_list = ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "إدارة المستخدمين", "تواصل معنا"]
+        else: # العميل
+            pages_list = ["الرئيسية", "حاسبة الطاقة الشمسية", "شركات التركيب", "خطط المتابعة", "تواصل معنا"]
+
+        # حماية من خطأ index لو الصفحة الحالية مش في القائمة الجديدة
+        if st.session_state.current_page not in pages_list:
+            st.session_state.current_page = "الرئيسية"
+            
+        current_idx = pages_list.index(st.session_state.current_page)
         
-        page = st.selectbox(
-            "☰ القائمة",
-            pages_list,
-            index=current_idx
-        )
+        page = st.selectbox("☰ القائمة", pages_list, index=current_idx)
         st.session_state.current_page = page
 
-    # --- صفحات التطبيق ---
+    # --- معالجة الصفحات ---
     if st.session_state.current_page == "الرئيسية":
         st.title("☀️ VPC Solar")
         st.subheader("Smart Solar Solutions")
@@ -160,7 +177,6 @@ if st.session_state.logged_in:
 
     elif st.session_state.current_page == "حاسبة الطاقة الشمسية":
         st.title("⚡ حاسبة الطاقة الشمسية")
-        st.markdown("---")
         col1, col2 = st.columns(2)
         with col1:
             power = st.number_input("إجمالي الأحمال (وات)", min_value=100, value=1000)
@@ -182,38 +198,26 @@ if st.session_state.logged_in:
         r2.metric("قدرة الإنفرتر", f"{inverter_size} W")
         r3.metric("عدد الألواح", f"{panel_count}")
         r4.metric("البطاريات", f"{battery_capacity} Ah")
-
         st.success(f"💰 السعر التقريبي: {estimated_price:,} جنيه")
 
     elif st.session_state.current_page == "شركات التركيب":
-        st.title("🏢 شركات التركيب")
-        companies = [
-            {"name": "شمس أكتوبر", "rating": "⭐ 4.9", "location": "6 أكتوبر"},
-            {"name": "إيجيبت سولار", "rating": "⭐ 4.7", "location": "القاهرة"},
-            {"name": "النيل للطاقة", "rating": "⭐ 4.8", "location": "الجيزة"}
-        ]
-        for comp in companies:
+        st.title("🏢 شركات التركيب المسجلة")
+        companies = db.collection("users").where("role", "==", "شركة تركيبات").stream()
+        has_companies = False
+        for doc in companies:
+            has_companies = True
+            c = doc.to_dict()
             with st.container(border=True):
-                st.subheader(comp["name"])
-                st.write(comp["rating"])
-                st.write(comp["location"])
-                st.button(f"طلب تركيب - {comp['name']}")
-
-    elif st.session_state.current_page == "خطط المتابعة":
-        st.title("📡 خطط المتابعة والصيانة")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("Basic")
-            st.write("✔ تنبيهات أعطال")
-            st.write("✔ متابعة الإنتاج")
-            st.write("✔ تقارير شهرية")
-            st.button("اشترك الآن")
-        with col2:
-            st.subheader("Premium")
-            st.write("✔ زيارات صيانة")
-            st.write("✔ دعم 24/7")
-            st.write("✔ متابعة مباشرة")
-            st.button("اشترك Premium")
+                c1, c2 = st.columns([3, 1])
+                with c1:
+                    st.subheader(c['username'])
+                    st.caption(f"📍 المقر: {c.get('location', 'غير محدد')}")
+                    st.write(c.get('bio', 'لا يوجد وصف متاح.'))
+                with c2:
+                    if st.button("طلب تسعير", key=doc.id):
+                        st.success(f"تم إرسال طلبك لشركة {c['username']}")
+        if not has_companies:
+            st.warning("لا توجد شركات مسجلة حالياً.")
 
     elif st.session_state.current_page == "تواصل معنا":
         st.title("📞 تواصل معنا")
@@ -223,21 +227,12 @@ if st.session_state.logged_in:
             message = st.text_area("رسالتك")
             submit = st.form_submit_button("إرسال")
             if submit:
-                try:
-                    db.collection("messages").add({
-                        "name": name_input, "email": email, "message": message,
-                        "timestamp": firestore.SERVER_TIMESTAMP
-                    })
-                    st.success("تم إرسال الرسالة بنجاح")
-                except Exception as e:
-                    st.error(e)
+                db.collection("messages").add({
+                    "name": name_input, "email": email, "message": message,
+                    "timestamp": firestore.SERVER_TIMESTAMP
+                })
+                st.success("تم إرسال الرسالة بنجاح")
 
     # --- Footer ---
     st.markdown("---")
-    col_btn, col_txt = st.columns([1, 8])
-    with col_btn:
-        if st.button("📞 تواصل معنا", key="footer_contact_btn"):
-            st.session_state.current_page = "تواصل معنا"
-            st.rerun()
-    with col_txt:
-        st.caption("VPC Solar © 2026")
+    st.caption("VPC Solar © 2026 | تطوير المهندس محمد سعد الدين")
